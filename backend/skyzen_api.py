@@ -31,7 +31,7 @@ else:
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
-FLIGHT_ID = "CX251"
+FLIGHT_ID = "CX844"
 UPDATE_INTERVAL = 2
 HISTORY_LIMIT = 60
 
@@ -50,7 +50,7 @@ THRESHOLDS = {
 }
 
 LIVE_SEATS = ["2A", "2K"]
-PATRICIA_NAUSEA_START_TICK = 8
+CATHERINE_NAUSEA_START_TICK = 8
 
 
 # =====================================================
@@ -60,14 +60,14 @@ PATRICIA_NAUSEA_START_TICK = 8
 initial_passengers = {
     "2A": {
         "passenger_id": "P001",
-        "name": "Patricia",
+        "name": "Catherine",
         "hrv": 55,
         "spo2": 98,
         "reported_symptom": None,
     },
     "2K": {
         "passenger_id": "P002",
-        "name": "Mr. Tanaka",
+        "name": "Stella",
         "hrv": 36,
         "spo2": 97,
         "reported_symptom": "fatigue",
@@ -170,8 +170,8 @@ def clamp(value, minimum, maximum):
     return max(minimum, min(maximum, value))
 
 
-def generate_patricia_reading(passenger, tick):
-    """Patricia starts well and reports nausea after eight simulation ticks."""
+def generate_catherine_reading(passenger, tick):
+    """Catherine starts well and reports nausea after eight simulation ticks."""
 
     passenger["hrv"] += random.randint(-1, 1)
     passenger["spo2"] += random.choice([-1, 0, 0, 0, 1])
@@ -179,12 +179,12 @@ def generate_patricia_reading(passenger, tick):
     passenger["hrv"] = clamp(passenger["hrv"], 48, 62)
     passenger["spo2"] = clamp(passenger["spo2"], 96, 100)
     passenger["reported_symptom"] = (
-        "nausea" if tick >= PATRICIA_NAUSEA_START_TICK else None
+        "nausea" if tick >= CATHERINE_NAUSEA_START_TICK else None
     )
 
 
 def generate_tanaka_reading(passenger):
-    """Mr. Tanaka reports fatigue from the start; readings stay in the demo range."""
+    """Stella reports fatigue from the start; readings stay in the demo range."""
 
     passenger["hrv"] = 36 + random.randint(-2, 2)
     passenger["spo2"] = 97 + random.randint(-1, 1)
@@ -198,7 +198,7 @@ def update_live_passengers():
 
     simulation_tick += 1
 
-    generate_patricia_reading(live_data["2A"], simulation_tick)
+    generate_catherine_reading(live_data["2A"], simulation_tick)
     generate_tanaka_reading(live_data["2K"])
 
 
@@ -250,6 +250,7 @@ def process_passenger(seat, passenger, timestamp):
     )
 
     return {
+        "flight_id": FLIGHT_ID,
         "passenger_id": passenger["passenger_id"],
         "seat": seat,
         "name": passenger["name"],
@@ -376,7 +377,7 @@ app.mount(
 
 @app.get("/passenger", include_in_schema=False)
 def passenger_page():
-    return FileResponse(FRONTEND_DIR / "passenger" / "passenger.html")
+    return FileResponse(FRONTEND_DIR / "passenger" / "dashboard4.html")
 
 
 @app.get("/crew", include_in_schema=False)

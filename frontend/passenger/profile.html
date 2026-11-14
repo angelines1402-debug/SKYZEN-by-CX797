@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkyZen · Your Wellness Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f2a3a;
+    --ink-soft: #4b6678;
+    --accent: #1f7a85;
+    --teal-dark: #164b57;
+    --green: #2bb38a;
+    --amber: #e8890c;
+    --spring: cubic-bezier(.34, 1.56, .64, 1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  svg { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  body {
+    position: relative;
+    min-height: 100vh;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(135deg, #b4d6ce 0%, #86b0ae 25%, #5b9095 50%, #3d7681 75%, #2a5e6b 100%);
+    overflow-x: hidden;
+  }
+
+  /* Background: colour blobs + one full-page decor image */
+  .blobs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .blobs i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .75; animation: drift 18s ease-in-out infinite alternate; }
+  .blobs i:nth-child(1) { width: 38vw; height: 38vw; left: -8vw; top: -10vw; background: #e6fff4; }
+  .blobs i:nth-child(2) { width: 30vw; height: 30vw; right: 6vw; top: 18vh; background: #4ec3d9; animation-duration: 22s; animation-delay: -6s; }
+  .blobs i:nth-child(3) { width: 34vw; height: 34vw; left: 28vw; bottom: -14vw; background: #2f6fd0; animation-duration: 26s; animation-delay: -12s; }
+  .blobs i:nth-child(4) { width: 22vw; height: 22vw; left: 4vw; bottom: 8vh; background: #8ef0c8; animation-duration: 20s; animation-delay: -3s; }
+  @keyframes drift { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(6vw,5vh,0) scale(1.15); } }
+  .decor { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; user-select: none; z-index: 0; opacity: .85; mix-blend-mode: soft-light; }
+
+  .page { position: relative; z-index: 1; width: min(88vw, 1500px); margin: 0 auto; padding: clamp(24px, 3vw, 44px) 0 clamp(110px, 10vw, 180px); }
+
+  /* Header */
+  header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .logo { width: clamp(210px, 22vw, 420px); height: auto; display: block; filter: drop-shadow(0 4px 14px rgba(0,40,60,.25)); }
+  .flight-no {
+    font-family: 'DM Serif Display', 'Playfair Display', Georgia, serif;
+    font-size: clamp(38px, 4.6vw, 86px);
+    letter-spacing: .01em; line-height: 1; color: #fff;
+    margin-top: clamp(90px, .8vw, 14px);
+    text-shadow: 0 4px 20px rgba(0,40,60,.35);
+  }
+
+  .title { margin-top: clamp(8px, 1.2vw, 20px); margin-left: 30px; color: var(--teal-dark); }
+  .title h1 { font-weight: 300; font-size: clamp(38px, 4.4vw, 84px); line-height: 1; letter-spacing: -.01em; }
+  .title p { font-weight: 700; font-size: clamp(15px, 1.5vw, 28px); margin-top: 4px; }
+
+  /* Glass surfaces */
+  .glass {
+    position: relative; overflow: hidden; isolation: isolate;
+    background: linear-gradient(135deg, rgba(255,255,255,.8) 0%, rgba(255,255,255,.5) 100%);
+    -webkit-backdrop-filter: blur(24px) saturate(185%); backdrop-filter: blur(24px) saturate(185%);
+    border: 1px solid rgba(255,255,255,.75);
+    box-shadow: inset 0 1.5px 1px rgba(255,255,255,1), inset 0 -1.5px 2px rgba(255,255,255,.4), 0 12px 30px rgba(8,50,62,.18);
+    transition: transform .45s var(--spring), box-shadow .35s ease;
+  }
+  .glass::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(circle at var(--mx, 25%) var(--my, 0%), rgba(255,255,255,.65), rgba(255,255,255,0) 55%);
+    opacity: .25; transition: opacity .3s ease;
+  }
+  .glass::after {
+    content: ""; position: absolute; left: 6%; right: 6%; top: 0; height: 30%; z-index: -1; pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0)); border-radius: 0 0 60% 60% / 0 0 100% 100%;
+  }
+  .glass.lift:hover { transform: translateY(-4px) scale(1.008); box-shadow: inset 0 1.5px 1px #fff, inset 0 -1.5px 2px rgba(255,255,255,.5), 0 20px 42px rgba(8,50,62,.26); }
+  .glass:hover::before { opacity: .8; }
+  .glass > * { position: relative; z-index: 1; }
+
+  /* Dark green-turquoise glass */
+  .glass.dark {
+    background: linear-gradient(135deg, rgba(23,98,104,.92) 0%, rgba(10,58,70,.96) 100%);
+    border-color: rgba(170,225,210,.4); color: #fff;
+    box-shadow: inset 0 1.5px 1px rgba(200,255,240,.45), inset 0 -1.5px 2px rgba(0,0,0,.2), 0 14px 34px rgba(4,40,48,.38);
+  }
+  .glass.dark::before { background: radial-gradient(circle at var(--mx, 25%) var(--my, 0%), rgba(190,245,225,.45), rgba(190,245,225,0) 55%); }
+  .glass.dark::after { background: linear-gradient(180deg, rgba(200,255,240,.16), rgba(200,255,240,0)); }
+
+  /* Main two cards */
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(16px, 2vw, 36px); margin-top: clamp(16px, 2vw, 34px); align-items: stretch; }
+  .panel { border-radius: 40px; padding: clamp(22px, 2.1vw, 36px) clamp(22px, 2.1vw, 36px) clamp(18px, 1.8vw, 30px); }
+  .eyebrow { font-size: clamp(11px, .95vw, 18px); letter-spacing: .3em; text-transform: uppercase; color: var(--ink-soft); }
+
+  /* Health rows */
+  .rows { margin-top: clamp(10px, 1vw, 18px); }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: clamp(14px, 1.4vw, 24px) 0; border-bottom: 1px solid rgba(15,42,58,.1); }
+  .row:last-child { border-bottom: 0; padding-bottom: clamp(6px, .6vw, 10px); }
+  .row h3 { font-size: clamp(16px, 1.45vw, 27px); font-weight: 600; }
+  .row span.val { display: block; font-size: clamp(13px, 1.1vw, 21px); color: var(--ink-soft); margin-top: 4px; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px;
+    font-size: clamp(12px, 1.05vw, 20px); font-weight: 500;
+    background: rgba(43,179,138,.14); border: 1px solid rgba(43,179,138,.3); color: #17795c;
+  }
+  .pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px rgba(43,179,138,.6); }
+  .pill.warn { background: rgba(232,137,12,.14); border-color: rgba(232,137,12,.35); color: #a35d00; }
+  .pill.warn::before { background: var(--amber); box-shadow: 0 0 8px rgba(232,137,12,.6); }
+
+  /* Goals */
+  .goals { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(10px, 1vw, 18px); margin-top: clamp(16px, 1.8vw, 32px); }
+  .goal {
+    display: flex; align-items: center; gap: 14px; text-align: left; cursor: pointer; font: inherit;
+    padding: clamp(12px, 1.1vw, 18px) clamp(14px, 1.2vw, 20px);
+    border-radius: 999px; font-size: clamp(14px, 1.3vw, 24px);
+    color: var(--ink-soft);
+    background: rgba(15,42,58,.07); border: 1px solid rgba(255,255,255,.6);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.8);
+    transition: transform .4s var(--spring), background .3s ease, color .3s ease, box-shadow .3s ease;
+  }
+  .goal:hover { transform: translateY(-2px) scale(1.02); }
+  .goal:active { transform: scale(.97); }
+  .goal:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .goal .ic { width: clamp(26px, 2.2vw, 40px); height: clamp(26px, 2.2vw, 40px); border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; background: rgba(255,255,255,.75); box-shadow: 0 1px 4px rgba(0,0,0,.08); transition: background .3s ease; }
+  .goal .ic svg { width: 55%; height: 55%; stroke: var(--ink-soft); stroke-width: 2.4; }
+  .goal .ic .tick { display: none; }
+  .goal.on {
+    background: linear-gradient(135deg, rgba(23,98,104,.92), rgba(10,58,70,.96));
+    color: #fff; border-color: rgba(170,225,210,.4);
+    box-shadow: inset 0 1.5px 1px rgba(200,255,240,.4), 0 8px 20px rgba(4,40,48,.3);
+  }
+  .goal.on .ic { background: rgba(200,245,230,.22); }
+  .goal.on .ic svg { stroke: #d4f3e8; }
+  .goal.on .ic .tick { display: block; }
+  .goal.on .ic .plus { display: none; }
+
+  /* Action cards */
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(16px, 2vw, 36px); margin-top: clamp(16px, 2vw, 34px); }
+  .action {
+    display: flex; align-items: center; justify-content: space-between; text-decoration: none; color: inherit;
+    border-radius: 999px; padding: clamp(18px, 1.8vw, 30px) clamp(24px, 2.2vw, 38px);
+  }
+  .action b { display: block; font-size: clamp(16px, 1.45vw, 27px); font-weight: 600; }
+  .action small { display: block; font-size: clamp(12px, 1.05vw, 20px); color: var(--ink-soft); margin-top: 4px; }
+  .action svg { width: clamp(18px, 1.5vw, 28px); height: clamp(18px, 1.5vw, 28px); stroke: var(--ink-soft); stroke-width: 2.2; transition: transform .35s var(--spring); }
+  .action:hover svg { transform: translateX(5px); }
+  .action.dark svg { stroke: #d4f3e8; }
+
+  /* Back button */
+  .back {
+    position: fixed; z-index: 5; bottom: clamp(16px, 3vh, 36px);
+    right: max(6vw, calc((100vw - 1500px) / 2));
+    width: clamp(52px, 4.5vw, 84px); height: clamp(52px, 4.5vw, 84px);
+    border-radius: 50%; display: grid; place-items: center; text-decoration: none;
+    background: linear-gradient(135deg, rgba(255,255,255,.75), rgba(255,255,255,.4));
+    -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.8);
+    box-shadow: inset 0 1.5px 1px #fff, 0 10px 26px rgba(8,50,62,.25);
+    transition: transform .4s var(--spring);
+  }
+  .back:hover { transform: scale(1.1) translateX(-3px); }
+  .back svg { width: 48%; height: 48%; stroke: var(--accent); stroke-width: 2.6; }
+
+  /* Entrance */
+  .reveal { opacity: 0; transform: translateY(18px) scale(.98); animation: rise .8s var(--spring) forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .glass { background: rgba(255,255,255,.88); } .glass.dark { background: #0f4650; } }
+  @media (prefers-reduced-motion: reduce) { .blobs i, .reveal { animation: none; opacity: 1; transform: none; } .glass, .goal, .back { transition: none; } }
+  @media (max-width: 900px) { .page { width: 92vw; } .panels, .actions { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+  <div class="blobs"><i></i><i></i><i></i><i></i></div>
+
+  <div class="page">
+    <header>
+      <img class="logo" src="/static/passenger/Images/cathayori.png" alt="Cathay Pacific SkyZen">
+      <div class="flight-no">CX844</div>
+    </header>
+
+    <div class="title">
+      <h1>Your Wellness Profile</h1>
+      <p>Health Summary – This flight</p>
+    </div>
+
+    <div class="panels">
+
+      <!-- Health summary -->
+      <section class="glass panel lift reveal">
+        <div class="eyebrow">Health Summary</div>
+        <div class="rows">
+          <div class="row">
+            <div><h3>Hydration</h3><span class="val">62%</span></div>
+            <span class="pill">Good</span>
+          </div>
+          <div class="row">
+            <div><h3>Heart Rate</h3><span class="val">74bpm</span></div>
+            <span class="pill">Normal</span>
+          </div>
+          <div class="row">
+            <div><h3>Oxygen Level</h3><span class="val">98%</span></div>
+            <span class="pill">Optimal</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Wellness goals -->
+      <section class="glass panel lift reveal">
+        <div class="eyebrow">Wellness Goals</div>
+        <div class="goals">
+          <button class="goal on" type="button"><span class="ic"><svg class="tick" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg><svg class="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Relaxation</button>
+          <button class="goal on" type="button"><span class="ic"><svg class="tick" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg><svg class="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Reduce Stress</button>
+          <button class="goal on" type="button"><span class="ic"><svg class="tick" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg><svg class="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Better Sleep</button>
+          <button class="goal" type="button"><span class="ic"><svg class="tick" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg><svg class="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>More Energy</button>
+          <button class="goal" type="button"><span class="ic"><svg class="tick" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg><svg class="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Digestion</button>
+          <button class="goal" type="button"><span class="ic"><svg class="tick" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg><svg class="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Focus</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <a class="glass action lift reveal" href="index 2.html">
+        <span><b>Update how you feel</b><small>Re-run wellness screening</small></span>
+        <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+      </a>
+      <a class="glass dark action lift reveal" href="wellness.html">
+        <span><b>View my wellness plan</b></span>
+        <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <a class="back" href="dashboard4.html" aria-label="Back to dashboard">
+    <svg viewBox="0 0 24 24"><path d="M20 12H4M10 6l-6 6 6 6"/></svg>
+  </a>
+
+<script>
+  document.querySelectorAll('.reveal').forEach((el, i) => el.style.animationDelay = (i * 80) + 'ms');
+
+  // pointer-following specular highlight
+  document.querySelectorAll('.glass').forEach(el => {
+    el.addEventListener('pointermove', e => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      el.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+    });
+  });
+
+  // toggle wellness goals
+  document.querySelectorAll('.goal').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.classList.toggle('on');
+    });
+  });
+</script>
+</body>
+</html>

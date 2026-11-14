@@ -1,4 +1,5 @@
-const PASSENGER_SEAT = "2A";
+const PASSENGER_SEAT =
+  new URLSearchParams(window.location.search).get("seat") || "2A";
 const FLIGHT_PHASES = ["boarding", "climb", "cruise", "descent"];
 let activeSymptom = null;
 
@@ -6,16 +7,18 @@ function updateBadge(elementId, status) {
   const badge = document.getElementById(elementId);
 
   badge.textContent =
-    status === "NORMAL" ? "Normal" : status;
-
-  badge.className =
     status === "NORMAL"
-      ? "metric-badge"
-      : "metric-badge warn";
+      ? "Normal"
+      : `${status[0]}${status.slice(1).toLowerCase()}`;
+
+  badge.classList.toggle("warn", status !== "NORMAL");
 }
 
 function updatePassengerDashboard(passenger) {
   // Passenger information
+  document.getElementById("flight-number").textContent =
+    passenger.flight_id;
+
   document.getElementById("passenger-name").textContent =
     passenger.name;
 
@@ -44,22 +47,41 @@ function updatePassengerDashboard(passenger) {
   const monitoringStatus =
     document.getElementById("monitoring-status");
 
+  const monitoringStatusDot =
+    document.getElementById("monitoring-status-dot");
+
   const monitoringDetail =
     document.getElementById("monitoring-detail");
 
-  if (passenger.priority === "Normal") {
-    monitoringStatus.innerHTML =
-      '<span class="dot dot-green"></span> No flags';
+  const symptom = passenger.reported_symptom;
+  const menuRecommendation = {
+    fatigue: "RESTORE",
+    nausea: "GENTLE",
+  }[symptom];
 
-    monitoringDetail.textContent =
-      "All readings within demo ranges";
-  } else {
-    monitoringStatus.innerHTML =
-      '<span class="dot dot-amber"></span> Check-in suggested';
+  monitoringStatus.textContent = symptom
+    ? `${symptom[0].toUpperCase()}${symptom.slice(1)} reported`
+    : passenger.priority === "High"
+      ? "Crew review suggested"
+      : passenger.priority === "Medium"
+        ? "Check-in suggested"
+        : "Normal";
 
-    monitoringDetail.textContent =
-      `${passenger.flags.length} reading(s) flagged for review`;
-  }
+  monitoringStatusDot.classList.toggle(
+    "alert",
+    Boolean(symptom) || passenger.priority !== "Normal"
+  );
+
+  document.getElementById("reported-symptom").textContent =
+    symptom
+      ? menuRecommendation
+        ? `Menu recommendation: ${menuRecommendation}`
+        : `Reported symptom: ${symptom}`
+      : "No symptom reported";
+
+  monitoringDetail.textContent = passenger.flags.length
+    ? `${passenger.flags.length} reading(s) flagged for review`
+    : "All readings within demo ranges";
 }
 
 async function refreshPassengerDashboard() {
@@ -203,12 +225,14 @@ async function loadWellnessPlan(symptom = activeSymptom, flightPhase) {
 const wellnessButton = document.querySelector(".wellness-btn");
 const wellnessPanel = document.getElementById("wellness-plan-panel");
 
-wellnessButton.addEventListener("click", async () => {
-  const isHidden = wellnessPanel.style.display === "none";
+if (wellnessButton && wellnessPanel) {
+  wellnessButton.addEventListener("click", async () => {
+    const isHidden = wellnessPanel.style.display === "none";
 
-  wellnessPanel.style.display = isHidden ? "block" : "none";
+    wellnessPanel.style.display = isHidden ? "block" : "none";
 
-  if (isHidden) {
-    await loadWellnessPlan();
-  }
-});
+    if (isHidden) {
+      await loadWellnessPlan();
+    }
+  });
+}

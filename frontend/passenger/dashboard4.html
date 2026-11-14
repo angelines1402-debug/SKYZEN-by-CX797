@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkyZen Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Playfair+Display:wght@800;900&family=Open+Sans:wght@700;800&family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0f1f3d;
+    --navy-2: #1b2a5a;
+    --teal-dark: #1d5560;
+    --text: #12203a;
+    --muted: #7b8aa0;
+    --green: #2bb38a;
+    --amber: #e8890c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    position: relative;
+    min-height: 100vh;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text);
+    background: linear-gradient(135deg, #b4d6ce 0%, #86b0ae 25%, #5b9095 50%, #3d7681 75%, #2a5e6b 100%);
+    overflow-x: hidden;
+  }
+
+  /* One decor image covering the whole page */
+  .decor {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    width: min(88vw, 1500px);
+    margin: 0 auto;
+    padding: clamp(24px, 3vw, 44px) 0 clamp(30px, 4vw, 60px);
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .logo { width: clamp(150px, 15.6vw, 300px); height: auto; display: block; }
+  .flight-no {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(36px, 4.4vw, 84px);
+    color: #fff;
+    line-height: 1;
+    margin-top: clamp(4px, .8vw, 14px);
+  }
+
+  .welcome {
+    margin-top: clamp(10px, 1.4vw, 24px);
+    margin-left: 30px;
+    color: var(--teal-dark);
+    line-height: 1;
+  }
+  .welcome small {
+    display: block;
+    font-size: clamp(16px, 1.45vw, 28px);
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .welcome .seat { font-size: 14px; margin-top: 8px; }
+  .welcome strong {
+    display: block;
+    font-size: clamp(40px, 3.9vw, 76px);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  /* Cards */
+  .card {
+    background: #fff;
+    border-radius: 28px;
+    box-shadow: 0 8px 24px rgba(10, 40, 60, .14);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 2fr 1.45fr;
+    gap: clamp(16px, 1.8vw, 34px);
+    margin-top: clamp(10px, 1vw, 18px);
+  }
+  .left { display: flex; flex-direction: column; gap: clamp(16px, 1.8vw, 34px); }
+  .right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: min-content;
+    gap: clamp(12px, 1.3vw, 24px);
+    align-content: start;
+  }
+
+  /* Flight card */
+  .flight {
+    background: radial-gradient(120% 120% at 50% 0%, #1c3a6e 0%, #0e1d3c 45%, #0a1429 100%);
+    color: #fff;
+    padding: clamp(22px, 2.2vw, 38px) clamp(22px, 2.2vw, 38px);
+    border-radius: 34px;
+    box-shadow: 0 10px 30px rgba(5, 20, 40, .35);
+  }
+  .eyebrow {
+    font-size: clamp(11px, .95vw, 18px);
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    color: #b8c4d9;
+  }
+  .route {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: 24px;
+    margin-top: clamp(22px, 2.2vw, 40px);
+  }
+  .route .code { font-size: clamp(28px, 2.4vw, 46px); font-weight: 600; line-height: 1.1; }
+  .route .city { font-size: clamp(13px, 1.1vw, 21px); color: #d0d9e8; margin-top: 2px; }
+  .route .end:last-child { text-align: right; }
+  .path {
+    position: relative;
+    border-top: 1px dashed rgba(190, 210, 235, .6);
+    align-self: center;
+    margin-top: 28px;
+  }
+  .path svg {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 26px; height: 26px;
+    padding: 0 3px;
+    background: #0e1d3c;
+    stroke: #8fd8ff;
+  }
+  .times {
+    display: flex;
+    justify-content: space-between;
+    margin-top: clamp(16px, 1.8vw, 32px);
+    font-size: clamp(13px, 1.1vw, 21px);
+    color: #e3e9f3;
+  }
+  .data-source {
+    margin-top: 12px;
+    color: #d0d9e8;
+    font-size: clamp(11px, .9vw, 16px);
+  }
+
+  /* Next activity */
+  .activity {
+    background: linear-gradient(100deg, #2183b8 0%, #2a6fae 50%, #2a58a0 100%);
+    color: #fff;
+    border-radius: 34px;
+    padding: clamp(20px, 2vw, 36px) clamp(22px, 2vw, 34px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 10px 30px rgba(10, 50, 100, .3);
+  }
+  .activity .eyebrow { color: #cfe3f5; font-size: clamp(11px, .9vw, 17px); }
+  .activity h2 {
+    font-size: clamp(20px, 1.9vw, 36px);
+    font-weight: 600;
+    margin: clamp(14px, 1.3vw, 24px) 0 clamp(8px, .8vw, 14px);
+  }
+  .activity p { font-size: clamp(14px, 1.3vw, 24px); color: #e1eefa; }
+  .activity .icon {
+    width: clamp(56px, 4.6vw, 90px);
+    height: clamp(56px, 4.6vw, 90px);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, .2);
+    display: grid;
+    place-items: center;
+    font-size: clamp(28px, 2.4vw, 46px);
+    flex-shrink: 0;
+  }
+
+  /* Status cards */
+  .status {
+    padding: clamp(16px, 1.5vw, 26px) clamp(16px, 1.5vw, 26px);
+    border-radius: 30px;
+  }
+  .status .label { font-size: clamp(13px, 1.05vw, 20px); color: #6b7a90; }
+  .status .value {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: clamp(20px, 1.8vw, 34px);
+    font-weight: 600;
+    margin: clamp(10px, 1.1vw, 20px) 0 clamp(8px, .9vw, 16px);
+  }
+  .status .sub { font-size: clamp(12px, 1vw, 19px); color: #8593a8; }
+  .status .sub + .sub { margin-top: 6px; }
+  .dot { width: .6em; height: .6em; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .dot.alert { background: var(--amber); }
+
+  .plan {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: clamp(14px, 1.3vw, 24px);
+    background: linear-gradient(100deg, #1a2a5c, #131f47);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 30px;
+    padding: clamp(16px, 1.5vw, 26px) clamp(18px, 1.7vw, 30px) clamp(16px, 1.5vw, 26px) clamp(14px, 1.2vw, 20px);
+    box-shadow: 0 10px 26px rgba(10, 20, 60, .35);
+    transition: transform .2s ease;
+  }
+  .plan:hover { transform: translateY(-2px); }
+  .plan .badge {
+    width: clamp(44px, 3.6vw, 68px);
+    height: clamp(44px, 3.6vw, 68px);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .1);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  .plan .badge svg { width: 55%; height: 55%; stroke: #fff; }
+  .plan .txt { flex: 1; }
+  .plan .txt b { display: block; font-size: clamp(16px, 1.4vw, 26px); font-weight: 600; }
+  .plan .txt span { font-size: clamp(13px, 1.1vw, 21px); color: #d6deef; }
+  .plan .arrow { width: clamp(20px, 1.6vw, 30px); stroke: #fff; }
+
+  /* Metrics */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: clamp(12px, 1.3vw, 24px);
+    margin-top: clamp(28px, 4.4vw, 80px);
+  }
+  .metric {
+    padding: clamp(14px, 1.3vw, 24px) clamp(14px, 1.4vw, 26px) clamp(14px, 1.3vw, 24px);
+    border-radius: 26px;
+  }
+  .metric .top { display: flex; justify-content: space-between; align-items: center; }
+  .metric .top > svg { width: 22px; height: 22px; stroke: #6b7a90; }
+  .metric-value { font-size: clamp(28px, 2.5vw, 46px); font-weight: 600; margin-top: 18px; }
+  .metric-value small { font-size: .55em; font-weight: 500; }
+  .metric h3 {
+    font-size: clamp(16px, 1.5vw, 28px);
+    font-weight: 500;
+    margin-top: clamp(14px, 1.5vw, 28px);
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: clamp(11px, .9vw, 17px);
+    background: #e6f6f0;
+    color: #1f8f6c;
+  }
+  .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .pill.warn { background: #fdf0dc; color: #b86a00; }
+  .pill.warn::before { background: var(--amber); }
+
+  /* Bottom nav cards */
+  .nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(12px, 1.3vw, 24px);
+    margin-top: clamp(12px, 1.3vw, 24px);
+  }
+  .nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: clamp(18px, 2vw, 34px) 10px clamp(18px, 2vw, 30px);
+    background: #fff;
+    border-radius: 30px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: clamp(14px, 1.2vw, 22px);
+    font-weight: 500;
+    box-shadow: 0 8px 24px rgba(10, 40, 60, .14);
+    transition: transform .2s ease;
+  }
+  .nav a:hover { transform: translateY(-3px); }
+  .nav svg { width: clamp(24px, 2vw, 36px); height: clamp(24px, 2vw, 36px); stroke: #2a7fb5; }
+
+  svg { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  @media (max-width: 900px) {
+    .page { width: 92vw; }
+    .grid { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .nav { grid-template-columns: 1fr; }
+  }
+
+  /* ============ LIQUID GLASS ============ */
+  :root { --spring: cubic-bezier(.34, 1.56, .64, 1); }
+
+  /* Ambient colour blobs so the glass has something to refract */
+  .blobs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .blobs i {
+    position: absolute; border-radius: 50%; filter: blur(70px); opacity: .75;
+    animation: drift 18s ease-in-out infinite alternate;
+  }
+  .blobs i:nth-child(1) { width: 38vw; height: 38vw; left: -8vw; top: -10vw; background: #e6fff4; }
+  .blobs i:nth-child(2) { width: 30vw; height: 30vw; right: 6vw; top: 18vh; background: #4ec3d9; animation-duration: 22s; animation-delay: -6s; }
+  .blobs i:nth-child(3) { width: 34vw; height: 34vw; left: 28vw; bottom: -14vw; background: #2f6fd0; animation-duration: 26s; animation-delay: -12s; }
+  .blobs i:nth-child(4) { width: 22vw; height: 22vw; left: 4vw; bottom: 8vh; background: #8ef0c8; animation-duration: 20s; animation-delay: -3s; }
+  @keyframes drift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to   { transform: translate3d(6vw, 5vh, 0) scale(1.15); }
+  }
+  .decor { z-index: 0; opacity: .85; mix-blend-mode: soft-light; }
+
+  /* Glass surface */
+  .card, .nav a, .flight, .activity, .plan {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background: linear-gradient(135deg, rgba(255,255,255,.46) 0%, rgba(255,255,255,.16) 100%);
+    -webkit-backdrop-filter: blur(24px) saturate(185%);
+    backdrop-filter: blur(24px) saturate(185%);
+    border: 1px solid rgba(255,255,255,.5);
+    box-shadow:
+      inset 0 1.5px 1px rgba(255,255,255,.9),
+      inset 0 -1.5px 2px rgba(255,255,255,.25),
+      inset 0 0 26px rgba(255,255,255,.14),
+      0 14px 34px rgba(6, 38, 58, .24);
+    transition: transform .45s var(--spring), box-shadow .35s ease;
+  }
+  /* moving specular highlight that follows the pointer */
+  .card::before, .nav a::before, .flight::before, .activity::before, .plan::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(circle at var(--mx, 25%) var(--my, 0%), rgba(255,255,255,.65), rgba(255,255,255,0) 55%);
+    opacity: .35; transition: opacity .3s ease;
+  }
+  /* top sheen */
+  .card::after, .nav a::after, .flight::after, .activity::after, .plan::after {
+    content: ""; position: absolute; left: 6%; right: 6%; top: 0; height: 38%;
+    z-index: -1; pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0));
+    border-radius: 0 0 60% 60% / 0 0 100% 100%;
+  }
+  .card:hover, .nav a:hover, .flight:hover, .activity:hover, .plan:hover {
+    transform: translateY(-4px) scale(1.015);
+    box-shadow:
+      inset 0 1.5px 1px rgba(255,255,255,1),
+      inset 0 -1.5px 2px rgba(255,255,255,.3),
+      inset 0 0 30px rgba(255,255,255,.2),
+      0 22px 46px rgba(6, 38, 58, .32);
+  }
+  .card:hover::before, .nav a:hover::before, .flight:hover::before,
+  .activity:hover::before, .plan:hover::before { opacity: .8; }
+  .card:active, .nav a:active, .plan:active { transform: scale(.98); }
+
+  /* Tinted dark glass */
+  .flight {
+    background: linear-gradient(135deg, rgba(34,72,140,.62) 0%, rgba(10,22,52,.72) 100%);
+    border-color: rgba(190,215,255,.35);
+  }
+  .activity {
+    background: linear-gradient(115deg, rgba(40,160,215,.68) 0%, rgba(38,92,180,.7) 100%);
+    border-color: rgba(200,230,255,.45);
+  }
+  .plan {
+    background: linear-gradient(115deg, rgba(40,58,130,.7) 0%, rgba(14,24,60,.78) 100%);
+    border-color: rgba(190,205,255,.35);
+  }
+  .path svg { background: transparent; filter: drop-shadow(0 0 6px rgba(143,216,255,.9)); }
+
+  /* Children sit above the highlights */
+  .card > *, .nav a > *, .flight > *, .activity > *, .plan > * { position: relative; z-index: 1; }
+
+  /* Light glass text legibility */
+  .status .label, .status .sub { color: #3f566b; }
+  .status .value, .metric h3, .nav a { color: #0d2236; }
+  .metric .top > svg { stroke: #2e4a60; }
+  .nav svg { stroke: #145d8c; filter: drop-shadow(0 2px 4px rgba(255,255,255,.6)); }
+
+  /* Glass pills & icon tiles */
+  .pill {
+    background: rgba(255,255,255,.45);
+    border: 1px solid rgba(255,255,255,.7);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.9), 0 2px 6px rgba(10,60,50,.12);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    color: #11775a; font-weight: 500;
+  }
+  .pill.warn { background: rgba(255,236,205,.6); color: #a35d00; }
+  .activity .icon, .plan .badge {
+    background: linear-gradient(135deg, rgba(255,255,255,.4), rgba(255,255,255,.1));
+    border: 1px solid rgba(255,255,255,.5);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.8), 0 6px 14px rgba(0,0,0,.15);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .dot { box-shadow: 0 0 0 4px rgba(43,179,138,.25), 0 0 10px rgba(43,179,138,.7); }
+
+  .logo { filter: drop-shadow(0 4px 14px rgba(0,40,60,.25)); }
+  .flight-no { text-shadow: 0 4px 20px rgba(0,40,60,.35); }
+
+  /* Entrance animation */
+  .reveal { opacity: 0; transform: translateY(18px) scale(.98); animation: rise .8s var(--spring) forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  /* Fallbacks */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .card, .nav a { background: rgba(255,255,255,.85); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .blobs i, .reveal { animation: none; opacity: 1; transform: none; }
+    .card, .nav a, .flight, .activity, .plan { transition: none; }
+  }
+
+  /* ============ UNIFIED WHITE GLASS PALETTE ============ */
+  :root {
+    --ink: #0f2a3a;
+    --ink-soft: #4b6678;
+    --accent: #1f7a85;
+    --accent-soft: rgba(31,122,133,.14);
+  }
+
+  /* every section: same white frosted glass */
+  .card, .nav a, .flight, .activity, .plan {
+    background: linear-gradient(135deg, rgba(255,255,255,.78) 0%, rgba(255,255,255,.5) 100%);
+    border-color: rgba(255,255,255,.75);
+    color: var(--ink);
+  }
+  .card::before, .nav a::before, .flight::before, .activity::before, .plan::before { opacity: .25; }
+
+  /* text */
+  .welcome, .welcome small, .welcome strong { color: #164b57; }
+  .eyebrow, .activity .eyebrow { color: var(--accent); font-weight: 500; }
+  .route .code, .activity h2, .plan .txt b { color: var(--ink); }
+  .route .city, .times, .activity p, .plan .txt span,
+  .status .label, .status .sub { color: var(--ink-soft); }
+  .status .value, .metric h3, .nav a { color: var(--ink); }
+
+  /* flight route line */
+  .path { border-top: 1px dashed rgba(31,122,133,.55); }
+  .path svg { stroke: var(--accent); filter: drop-shadow(0 0 5px rgba(31,122,133,.35)); }
+
+  /* icon tiles in one accent colour */
+  .activity .icon, .plan .badge {
+    background: linear-gradient(135deg, rgba(31,122,133,.2), rgba(31,122,133,.08));
+    border: 1px solid rgba(255,255,255,.8);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.9), 0 4px 10px rgba(20,80,90,.12);
+  }
+  .plan .badge svg, .plan .arrow { stroke: var(--accent); }
+  .metric .top > svg, .nav svg { stroke: var(--accent); }
+  .nav svg { filter: none; }
+
+  /* status pills */
+  .pill { background: rgba(43,179,138,.14); border-color: rgba(43,179,138,.3); color: #17795c; box-shadow: none; }
+  .pill.warn { background: rgba(232,137,12,.14); border-color: rgba(232,137,12,.35); color: #a35d00; }
+
+  /* softer shadows to suit white surfaces */
+  .card, .nav a, .flight, .activity, .plan {
+    box-shadow:
+      inset 0 1.5px 1px rgba(255,255,255,1),
+      inset 0 -1.5px 2px rgba(255,255,255,.4),
+      0 12px 30px rgba(8, 50, 62, .18);
+  }
+  .card:hover, .nav a:hover, .flight:hover, .activity:hover, .plan:hover {
+    box-shadow:
+      inset 0 1.5px 1px rgba(255,255,255,1),
+      inset 0 -1.5px 2px rgba(255,255,255,.5),
+      0 20px 42px rgba(8, 50, 62, .26);
+  }
+
+  /* ============ DARK GREEN-TURQUOISE GLASS (flight + wellness plan) ============ */
+  .flight, .plan {
+    background: linear-gradient(135deg, rgba(23,98,104,.9) 0%, rgba(10,58,70,.94) 100%);
+    border-color: rgba(170,225,210,.4);
+    color: #fff;
+    box-shadow:
+      inset 0 1.5px 1px rgba(200,255,240,.45),
+      inset 0 -1.5px 2px rgba(0,0,0,.2),
+      0 14px 34px rgba(4, 40, 48, .38);
+  }
+  .flight:hover, .plan:hover {
+    box-shadow:
+      inset 0 1.5px 1px rgba(200,255,240,.6),
+      inset 0 -1.5px 2px rgba(0,0,0,.2),
+      0 22px 46px rgba(4, 40, 48, .48);
+  }
+  .flight::before, .plan::before {
+    background: radial-gradient(circle at var(--mx, 25%) var(--my, 0%), rgba(190,245,225,.45), rgba(190,245,225,0) 55%);
+  }
+  .flight::after, .plan::after {
+    background: linear-gradient(180deg, rgba(200,255,240,.16), rgba(200,255,240,0));
+  }
+
+  .flight .eyebrow { color: #a9d9cb; }
+  .flight .route .code, .plan .txt b { color: #fff; }
+  .flight .route .city, .flight .times, .plan .txt span { color: #cfe8e0; }
+
+  .flight .path { border-top: 1px dashed rgba(190,235,222,.6); }
+  .flight .path svg { stroke: #c6efe2; filter: drop-shadow(0 0 6px rgba(160,235,210,.7)); }
+
+  .plan .badge {
+    background: linear-gradient(135deg, rgba(200,245,230,.28), rgba(200,245,230,.1));
+    border: 1px solid rgba(200,245,230,.45);
+    box-shadow: inset 0 1px 1px rgba(220,255,245,.5), 0 4px 10px rgba(0,0,0,.2);
+  }
+  .plan .badge svg, .plan .arrow { stroke: #d4f3e8; }
+
+  /* Bolder flight number */
+  .flight-no {
+    font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+    font-weight: 900;
+    letter-spacing: .01em;
+    font-size: clamp(34px, 4vw, 76px);
+  }
+
+  /* Flight number: Open Sans Bold */
+  .flight-no {
+    font-family: 'Open Sans', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .logo { width: clamp(210px, 22vw, 420px); }
+
+  .flight-no {
+    font-family: 'DM Serif Display', 'Playfair Display', Georgia, serif;
+    font-weight: 400;
+    letter-spacing: .01em;
+    font-size: clamp(38px, 4.6vw, 86px);
+    margin-top: 90px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Background decoration (one image, full page) -->
+  <div class="blobs"><i></i><i></i><i></i><i></i></div>
+  <div class="page">
+    <header>
+      <img class="logo" src="/static/passenger/Images/cathayori.png" alt="Cathay Pacific SkyZen">
+      <div class="flight-no" id="flight-number">CX844</div>
+    </header>
+
+    <div class="welcome">
+      <small>Welcome back,</small>
+      <strong id="passenger-name">Catherine</strong>
+      <small class="seat" id="passenger-seat">Seat 2A</small>
+    </div>
+
+    <div class="grid">
+
+      <!-- Left column -->
+      <div class="left">
+        <section class="flight reveal">
+          <div class="eyebrow">Cathay Pacific · In flight</div>
+          <div class="route">
+            <div class="end">
+              <div class="code">HKG</div>
+              <div class="city">Hong Kong</div>
+            </div>
+            <div class="path">
+              <svg viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+            </div>
+            <div class="end">
+              <div class="code">JFK</div>
+              <div class="city">New York City</div>
+            </div>
+          </div>
+          <div class="times">
+            <span>Local time 19:24</span>
+            <span>Destination 06:24</span>
+          </div>
+          <div class="data-source" id="data-source">Connecting to live passenger data…</div>
+        </section>
+
+        <section class="activity reveal">
+          <div>
+            <div class="eyebrow">Next activity</div>
+            <h2>Hawthorn Hydration Drink</h2>
+            <p>In 20 minutes</p>
+          </div>
+          <div class="icon">🍵</div>
+        </section>
+      </div>
+
+      <!-- Right column -->
+      <div class="right">
+        <div class="card status reveal">
+          <div class="label">Wellness Status</div>
+          <div class="value">
+            <span class="dot" id="monitoring-status-dot"></span>
+            <span id="monitoring-status">Loading live data…</span>
+          </div>
+          <div class="sub" id="monitoring-detail">Connecting to SkyZen API</div>
+          <div class="sub" id="reported-symptom">No symptom reported</div>
+        </div>
+
+        <div class="card status reveal">
+          <div class="label">Jet Lag Phase</div>
+          <div class="value">Adapting</div>
+          <div class="sub">-8h to London</div>
+        </div>
+
+        <a class="plan reveal" href="/static/passenger/wellness.html">
+          <span class="badge">
+            <svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>
+          </span>
+          <span class="txt">
+            <b>Your Wellness Plan</b>
+            <span>Personalised for this flight</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Live health metrics -->
+    <div class="metrics">
+      <div class="card metric reveal">
+        <div class="top">
+          <svg viewBox="0 0 24 24"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 7l-1.3-1.4a5 5 0 0 0-7.1 7.1L12 21l8.4-8.3a5 5 0 0 0 0-7.1z"/><path d="M6 12h3l1.5-2.5 2 5 1.5-2.5h3"/></svg>
+          <span class="pill" id="hrv-status">Loading</span>
+        </div>
+        <div class="metric-value" id="hrv-value">-- ms</div>
+        <h3>Heart Rate Variability</h3>
+      </div>
+      <div class="card metric reveal">
+        <div class="top">
+          <svg viewBox="0 0 24 24"><path d="M3 8h10a3 3 0 1 0-3-3"/><path d="M3 12h14a3 3 0 1 1-3 3"/><path d="M3 16h7"/></svg>
+          <span class="pill" id="spo2-status">Loading</span>
+        </div>
+        <div class="metric-value" id="spo2-value">--%</div>
+        <h3>Oxygen Saturation (SpO₂)</h3>
+      </div>
+    </div>
+
+    <!-- Navigation cards -->
+    <nav class="nav">
+      <a class="reveal" href="/static/passenger/sleep.html">
+        <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        Sleep Mode
+      </a>
+      <a class="reveal" href="/static/passenger/meals.html">
+        <svg viewBox="0 0 24 24"><path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7"/></svg>
+        Meals
+      </a>
+      <a class="reveal" href="/static/passenger/profile.html">
+        <svg viewBox="0 0 24 24"><path d="M20.400 5.600a5 5 0 0 0-7.100 0L12 7l-1.300-1.400a5 5 0 0 0-7.100 7.100L12 21l8.400-8.300a5 5 0 0 0 0-7.100z"/><path d="M6 12h3l1.500-2.500 2 5 1.500-2.500h3"/></svg>
+        Profile
+      </a>
+    </nav>
+
+  </div>
+
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/passenger.js"></script>
+<script>
+  // stagger entrance + pointer-following specular highlight
+  document.querySelectorAll('.reveal').forEach((el, i) => el.style.animationDelay = (i * 70) + 'ms');
+  document.querySelectorAll('.card, .nav a, .flight, .activity, .plan').forEach(el => {
+    el.addEventListener('pointermove', e => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      el.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+    });
+  });
+</script>
+</body>
+</html>

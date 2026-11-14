@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkyZen · Meals &amp; Drinks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f2a3a;
+    --ink-soft: #4b6678;
+    --accent: #1f7a85;
+    --teal-dark: #164b57;
+    --spring: cubic-bezier(.34, 1.56, .64, 1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  svg { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  body {
+    position: relative;
+    min-height: 100vh;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(135deg, #b4d6ce 0%, #86b0ae 25%, #5b9095 50%, #3d7681 75%, #2a5e6b 100%);
+    overflow-x: hidden;
+  }
+
+  .blobs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .blobs i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .75; animation: drift 18s ease-in-out infinite alternate; }
+  .blobs i:nth-child(1) { width: 38vw; height: 38vw; left: -8vw; top: -10vw; background: #e6fff4; }
+  .blobs i:nth-child(2) { width: 30vw; height: 30vw; right: 6vw; top: 18vh; background: #4ec3d9; animation-duration: 22s; animation-delay: -6s; }
+  .blobs i:nth-child(3) { width: 34vw; height: 34vw; left: 28vw; bottom: -14vw; background: #2f6fd0; animation-duration: 26s; animation-delay: -12s; }
+  .blobs i:nth-child(4) { width: 22vw; height: 22vw; left: 4vw; bottom: 8vh; background: #8ef0c8; animation-duration: 20s; animation-delay: -3s; }
+  @keyframes drift { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(6vw,5vh,0) scale(1.15); } }
+  .decor { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; user-select: none; z-index: 0; opacity: .85; mix-blend-mode: soft-light; }
+
+  .page { position: relative; z-index: 1; width: min(88vw, 1500px); margin: 0 auto; padding: clamp(24px, 3vw, 44px) 0 clamp(90px, 8vw, 140px); }
+
+  header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .logo { width: clamp(210px, 22vw, 420px); height: auto; display: block; filter: drop-shadow(0 4px 14px rgba(0,40,60,.25)); }
+  .flight-no {
+    font-family: 'DM Serif Display', 'Playfair Display', Georgia, serif;
+    font-size: clamp(38px, 4.6vw, 86px);
+    letter-spacing: .01em; line-height: 1; color: #fff;
+    margin-top: 90px;
+    text-shadow: 0 4px 20px rgba(0,40,60,.35);
+  }
+
+  .title { margin-top: clamp(8px, 1.2vw, 20px); margin-left:30px; var(--teal-dark); }
+  .title h1 { font-weight: 300; font-size: clamp(38px, 4.4vw, 84px); line-height: 1; letter-spacing: -.01em; }
+  .title p { font-weight: 700; font-size: clamp(15px, 1.5vw, 28px); margin-top: 2px; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(20px, 2.2vw, 42px); margin-top: clamp(20px, 2.2vw, 40px); align-items: start; }
+  .section-label {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    font-size: clamp(16px, 1.5vw, 28px);
+    color: #fff; margin-bottom: clamp(6px, .7vw, 12px);
+    text-shadow: 0 2px 10px rgba(0,40,60,.25);
+  }
+  .meals { display: flex; flex-direction: column; gap: clamp(12px, 1.2vw, 22px); }
+  .drinks { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(12px, 1.2vw, 22px); }
+
+  .item {
+    position: relative; overflow: hidden; isolation: isolate; cursor: pointer;
+    text-align: left; font: inherit; color: var(--ink);
+    background: linear-gradient(135deg, rgba(255,255,255,.8) 0%, rgba(255,255,255,.5) 100%);
+    -webkit-backdrop-filter: blur(24px) saturate(185%); backdrop-filter: blur(24px) saturate(185%);
+    border: 1px solid rgba(255,255,255,.75);
+    border-radius: 30px;
+    box-shadow: inset 0 1.5px 1px rgba(255,255,255,1), inset 0 -1.5px 2px rgba(255,255,255,.4), 0 12px 30px rgba(8,50,62,.18);
+    transition: transform .45s var(--spring), box-shadow .35s ease, background .35s ease;
+  }
+  .item::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(circle at var(--mx, 25%) var(--my, 0%), rgba(255,255,255,.65), rgba(255,255,255,0) 55%);
+    opacity: .25; transition: opacity .3s ease;
+  }
+  .item::after {
+    content: ""; position: absolute; left: 6%; right: 6%; top: 0; height: 38%; z-index: -1; pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0)); border-radius: 0 0 60% 60% / 0 0 100% 100%;
+  }
+  .item:hover { transform: translateY(-4px) scale(1.012); box-shadow: inset 0 1.5px 1px #fff, inset 0 -1.5px 2px rgba(255,255,255,.5), 0 20px 42px rgba(8,50,62,.26); }
+  .item:hover::before { opacity: .8; }
+  .item:active { transform: scale(.98); }
+  .item:focus-visible { outline: 3px solid rgba(255,255,255,.9); outline-offset: 3px; }
+
+  .item.selected {
+    background: linear-gradient(135deg, #176268eb 0%, rgba(10,58,70,.96) 100%);
+    border-color: rgba(170,225,210,.4); color: #fff;
+    box-shadow: inset 0 1.5px 1px rgba(200,255,240,.45), inset 0 -1.5px 2px rgba(0,0,0,.2), 0 14px 34px rgba(4,40,48,.38);
+  }
+  .item.selected::before { background: radial-gradient(circle at var(--mx, 25%) var(--my, 0%), rgba(190,245,225,.45), rgba(190,245,225,0) 55%); }
+  .item.selected::after { background: linear-gradient(180deg, rgba(200,255,240,.16), rgba(200,255,240,0)); }
+  .item > * { position: relative; z-index: 1; }
+
+  .meal { padding: clamp(18px, 1.9vw, 34px) clamp(20px, 2vw, 34px); min-height: clamp(130px, 11.5vw, 200px); }
+  .meal h3 { font-size: clamp(17px, 1.5vw, 28px); font-weight: 600; padding-right: 40px; }
+  .meal .desc { font-size: clamp(14px, 1.3vw, 24px); color: var(--ink-soft); margin: clamp(8px, .8vw, 14px) 0 clamp(12px, 1.2vw, 20px); font-weight: 300; }
+  .selected .desc { color: #d3ebe3; }
+  .check { position: absolute !important; top: clamp(18px, 1.9vw, 34px); right: clamp(20px, 2vw, 34px); width: clamp(20px, 1.7vw, 30px); height: clamp(20px, 1.7vw, 30px); stroke: #fff; stroke-width: 2.4; opacity: 0; transform: scale(.5); transition: all .35s var(--spring); }
+  .selected .check { opacity: 1; transform: scale(1); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: clamp(11px, .95vw, 17px); background: rgba(15,42,58,.07); color: #4a5f72; border: 1px solid transparent; }
+  .chip svg { width: 1.1em; height: 1.1em; }
+  .chip.time { background: rgba(31,122,133,.12); border-color: rgba(31,122,133,.3); color: #17707b; }
+  .chip.time.warm { background: rgba(232,150,30,.14); border-color: rgba(232,150,30,.35); color: #a86a00; }
+  .selected .chip { background: rgba(200,245,230,.16); border-color: rgba(200,245,230,.25); color: #e2f6ee; }
+
+  .drink { padding: clamp(18px, 1.9vw, 34px) clamp(18px, 1.8vw, 32px); min-height: clamp(130px, 11vw, 196px); display: flex; flex-direction: column; justify-content: space-between; border-radius: 34px; }
+  .drink .emoji { font-size: clamp(24px, 2.1vw, 40px); line-height: 1; }
+  .drink h3 { font-size: clamp(15px, 1.35vw, 25px); font-weight: 600; margin-top: clamp(12px, 1.4vw, 26px); }
+  .drink p { font-size: clamp(12px, 1vw, 19px); color: var(--ink-soft); margin-top: 4px; }
+  .selected p { color: #cfe8e0; }
+
+  .back {
+    position: fixed; z-index: 5; bottom: clamp(20px, 6vh, 64px);
+    right: max(6vw, calc((100vw - 1500px) / 2));
+    width: clamp(52px, 4.5vw, 84px); height: clamp(52px, 4.5vw, 84px);
+    border-radius: 50%; display: grid; place-items: center; text-decoration: none;
+    background: linear-gradient(135deg, rgba(255,255,255,.75), rgba(255,255,255,.4));
+    -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.8);
+    box-shadow: inset 0 1.5px 1px #fff, 0 10px 26px rgba(8,50,62,.25);
+    transition: transform .4s var(--spring);
+  }
+  .back:hover { transform: scale(1.1) translateX(-3px); }
+  .back svg { width: 48%; height: 48%; stroke: var(--accent); stroke-width: 2.6; }
+
+  .reveal { opacity: 0; transform: translateY(18px) scale(.98); animation: rise .8s var(--spring) forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .item { background: rgba(255,255,255,.88); } }
+  @media (prefers-reduced-motion: reduce) { .blobs i, .reveal { animation: none; opacity: 1; transform: none; } .item, .back { transition: none; } }
+  @media (max-width: 900px) { .page { width: 92vw; } .cols { grid-template-columns: 1fr; } }
+  .summary-line { font-size: clamp(13px, 1.15vw, 21px); color: #fff; text-shadow: 0 2px 10px rgba(0,40,60,.3); }
+  .summary-line b { font-weight: 600; }
+  .submit-btn {
+    cursor: pointer; font: inherit; font-weight: 600; font-size: clamp(16px, 1.5vw, 26px); color: #fff;
+    padding: clamp(14px, 1.4vw, 24px) clamp(40px, 4.4vw, 84px); border-radius: 999px;
+    background: linear-gradient(135deg, rgba(23,98,104,.95), rgba(10,58,70,.98));
+    border: 1px solid rgba(170,225,210,.45);
+    box-shadow: inset 0 1.5px 1px rgba(200,255,240,.45), 0 14px 34px rgba(4,40,48,.38);
+    transition: transform .4s var(--spring), box-shadow .3s ease;
+  }
+  .submit-btn:hover { transform: translateY(-3px) scale(1.03); box-shadow: inset 0 1.5px 1px rgba(200,255,240,.55), 0 20px 44px rgba(4,40,48,.48); }
+  .submit-btn:active { transform: scale(.97); }
+  .submit-btn:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+  .submit-row {
+  grid-column: 1 / -1; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: clamp(24px, 3vw, 50px);
+  text-align: center;
+}
+
+  .cmodal { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px;
+    background: rgba(4,28,36,.5); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility .3s ease; }
+  .cmodal.open { opacity: 1; visibility: visible; }
+  .cmodal-card { width: min(92vw, 560px); padding: clamp(26px, 3vw, 42px); border-radius: 36px; text-align: center; color: var(--ink);
+    background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(255,255,255,.82)); border: 1px solid rgba(255,255,255,.8);
+    box-shadow: inset 0 1.5px 1px #fff, 0 30px 70px rgba(0,20,30,.45);
+    transform: translateY(24px) scale(.94); transition: transform .5s var(--spring); }
+  .cmodal.open .cmodal-card { transform: none; }
+  .cmodal h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: clamp(28px, 3vw, 40px); line-height: 1.1; color: var(--teal-dark); }
+  .cmodal p.lead { color: var(--ink-soft); font-weight: 300; font-size: clamp(14px, 1.3vw, 18px); line-height: 1.5; margin-top: 12px; }
+  .choices { margin: clamp(18px, 2vw, 26px) 0 0; text-align: left; border-radius: 24px; padding: 6px 20px; background: rgba(31,122,133,.1); border: 1px solid rgba(31,122,133,.22); }
+  .choices div { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; font-size: clamp(14px, 1.3vw, 18px); }
+  .choices div + div { border-top: 1px solid rgba(15,42,58,.1); }
+  .choices span { color: var(--ink-soft); }
+  .choices b { font-weight: 600; text-align: right; }
+  .cactions { display: flex; gap: 14px; justify-content: center; margin-top: clamp(22px, 2.4vw, 32px); }
+  .cactions a, .cactions button { flex: 1; max-width: 210px; cursor: pointer; text-decoration: none; text-align: center; font: inherit; font-weight: 600;
+    font-size: clamp(15px, 1.4vw, 19px); padding: 15px 20px; border-radius: 999px; transition: transform .3s var(--spring); }
+  .cactions a:hover, .cactions button:hover { transform: translateY(-2px) scale(1.03); }
+  .cactions :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .c-primary { background: linear-gradient(135deg, #1b6a70, #0f4650); color: #fff; border: 0; box-shadow: 0 8px 20px rgba(4,40,48,.35); }
+  .c-secondary { background: #fff; color: #3d7a80; border: 1px solid rgba(61,122,128,.35); }
+  .done-ic { width: 72px; height: 72px; margin: 0 auto 16px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #1b6a70, #0f4650); box-shadow: 0 8px 20px rgba(4,40,48,.35); }
+  .done-ic svg { width: 46%; height: 46%; stroke: #fff; stroke-width: 2.6; }
+  .cmodal [hidden] { display: none !important; }
+  .err { color: #b3261e; font-size: 14px; margin-top: 12px; }
+    .submit-btn.is-submitted,
+  .submit-btn:disabled {
+    cursor: default;
+    color: #d3ebe3;
+    background: linear-gradient(135deg, rgba(23,98,104,.6), rgba(10,58,70,.7));
+    border-color: rgba(170,225,210,.25);
+    box-shadow: inset 0 1.5px 1px rgba(200,255,240,.25), 0 8px 20px rgba(4,40,48,.2);
+    transform: none;
+  }
+.submit-btn.is-submitted:hover,
+.submit-btn:disabled:hover {
+  transform: none;
+  box-shadow: inset 0 1.5px 1px rgba(200,255,240,.25), 0 8px 20px rgba(4,40,48,.2);
+}
+
+</style>
+</head>
+<body>
+
+  <div class="blobs"><i></i><i></i><i></i><i></i></div>
+
+  <div class="page">
+    <header>
+      <img class="logo" src="/static/passenger/Images/cathayori.png" alt="Cathay Pacific SkyZen">
+      <div class="flight-no">CX844</div>
+    </header>
+
+    <div class="title">
+      <h1>Meals &amp; Drinks</h1>
+      <p>Personalised to your wellness profile</p>
+    </div>
+
+    <div class="cols">
+
+      <section>
+        <h2 class="section-label">Recommended Meals</h2>
+        <div class="meals" data-group>
+          <button class="item meal selected reveal" type="button">
+            <svg class="check" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg>
+            <h3>Low-Sodium Dinner</h3>
+            <p class="desc">Steamed sea bass, jasmine rice, greens</p>
+            <div class="chips">
+              <span class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>22:00</span>
+              <span class="chip">Low-sodium</span>
+              <span class="chip">Heart-friendly</span>
+            </div>
+          </button>
+
+          <button class="item meal reveal" type="button">
+            <svg class="check" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg>
+            <h3>Hydration Bowl</h3>
+            <p class="desc">Cucumber, watermelon, mint</p>
+            <div class="chips">
+              <span class="chip time"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>20:30</span>
+              <span class="chip">Hydrating</span>
+            </div>
+          </button>
+
+          <button class="item meal reveal" type="button">
+            <svg class="check" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg>
+            <h3>TCM Wellness Plate</h3>
+            <p class="desc">Congee, ginger, goji berries</p>
+            <div class="chips">
+              <span class="chip time warm"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>07:00</span>
+              <span class="chip">TCM</span>
+              <span class="chip">Digestive</span>
+            </div>
+          </button>
+
+          <button class="item meal reveal" type="button">
+            <svg class="check" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg>
+            <h3>Light Breakfast</h3>
+            <p class="desc">Oats, berries, almond milk</p>
+            <div class="chips">
+              <span class="chip time"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>09:00</span>
+              <span class="chip">Energising</span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-label">TCM Wellness Drinks</h2>
+        <div class="drinks" data-group>
+          <button class="item drink selected reveal" type="button">
+            <span class="emoji">🍵</span>
+            <div><h3>Hawthorn Tea</h3><p>Traditional wellness tea</p></div>
+          </button>
+          <button class="item drink reveal" type="button">
+            <span class="emoji">🌼</span>
+            <div><h3>Chrysanthemum</h3><p>Calm eyes · heat relief</p></div>
+          </button>
+          <button class="item drink reveal" type="button">
+            <span class="emoji">🫚</span>
+            <div><h3>Ginger Jujube</h3><p>Warmth · digestion</p></div>
+          </button>
+          <button class="item drink reveal" type="button">
+            <span class="emoji">💧</span>
+            <div><h3>Electrolyte Water</h3><p>Rehydration</p></div>
+          </button>
+        </div>
+      </section>
+
+    <div class="submit-row">
+      <div class="summary-line" id="summaryLine"></div>
+      <button class="submit-btn" id="submitBtn" type="button">Submit my choices</button>
+    </div>
+  </div>
+
+  <div class="cmodal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="cTitle" aria-hidden="true">
+    <div class="cmodal-card">
+
+      <div id="stepConfirm">
+        <h2 id="cTitle">Confirm your choices?</h2>
+        <p class="lead">Your meal and drink will be sent to the cabin crew.</p>
+        <div class="choices">
+          <div><span>Meal</span><b id="cMeal"></b></div>
+          <div><span>Drink</span><b id="cDrink"></b></div>
+        </div>
+        <p class="err" id="cErr" hidden>Could not send your choices. Please try again.</p>
+        <div class="cactions">
+          <button type="button" class="c-secondary" id="cBack">Go back</button>
+          <button type="button" class="c-primary" id="cConfirm">Confirm</button>
+        </div>
+      </div>
+
+      <div id="stepDone" hidden>
+        <div class="done-ic"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <h2>Sent to the crew</h2>
+        <p class="lead">Thank you, the crew now have your meal and drink choices.</p>
+        <div class="cactions">
+          <button type="button" class="c-secondary" id="cClose">Close</button>
+          <a class="c-primary" href="dashboard4.html">Dashboard</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <a class="back" href="dashboard4.html" aria-label="Back to dashboard">
+    <svg viewBox="0 0 24 24"><path d="M20 12H4M10 6l-6 6 6 6"/></svg>
+  </a>
+
+<script>
+  document.querySelectorAll('.reveal').forEach((el, i) => el.style.animationDelay = (i * 70) + 'ms');
+
+  document.querySelectorAll('.item').forEach(el => {
+    el.addEventListener('pointermove', e => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      el.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+    });
+  });
+
+  document.querySelectorAll('[data-group]').forEach(group => {
+    group.addEventListener('click', e => {
+      const card = e.target.closest('.item');
+      if (!card) return;
+      group.querySelectorAll('.item').forEach(c => c.classList.toggle('selected', c === card));
+    });
+  });
+
+  const SEAT = '2A', PASSENGER = 'Catherine';
+  const STORE_KEY = 'skyzen_orders';
+
+  const $ = id => document.getElementById(id);
+  const picked = () => ({
+    meal:  (document.querySelector('.meals .item.selected h3')  || {}).textContent || '',
+    drink: (document.querySelector('.drinks .item.selected h3') || {}).textContent || ''
+  });
+
+  function updateSummary() {
+    const c = picked();
+    $('summaryLine').innerHTML = (c.meal || c.drink)
+      ? 'Your choices: <b></b> · <b></b>' : 'Pick a meal and a drink';
+    const b = $('summaryLine').querySelectorAll('b');
+    if (b.length) { b[0].textContent = c.meal || '—'; b[1].textContent = c.drink || '—'; }
+  }
+  updateSummary();
+  document.querySelectorAll('[data-group]').forEach(g => g.addEventListener('click', updateSummary));
+
+  const cm = $('confirmModal');
+  function openConfirm() {
+    const c = picked();
+    $('cMeal').textContent = c.meal || '—';
+    $('cDrink').textContent = c.drink || '—';
+    $('cErr').hidden = true;
+    $('stepConfirm').hidden = false; $('stepDone').hidden = true;
+    cm.classList.add('open'); cm.setAttribute('aria-hidden', 'false'); $('cConfirm').focus();
+  }
+  function closeConfirm() { cm.classList.remove('open'); cm.setAttribute('aria-hidden', 'true'); $('submitBtn').focus(); }
+
+  $('submitBtn').addEventListener('click', openConfirm);
+  $('cBack').addEventListener('click', closeConfirm);
+  $('cClose').addEventListener('click', closeConfirm);
+  cm.addEventListener('click', e => { if (e.target === cm) closeConfirm(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && cm.classList.contains('open')) closeConfirm(); });
+
+  $('cConfirm').addEventListener('click', () => {
+  const c = picked();
+  try {
+    const all = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+    all[SEAT] = { seat: SEAT, name: PASSENGER, meal: c.meal, drink: c.drink, sentAt: Date.now() };
+    localStorage.setItem(STORE_KEY, JSON.stringify(all));
+    markSubmitted();                                            // ← add this
+    $('stepConfirm').hidden = true; $('stepDone').hidden = false;
+  } catch (err) {
+    $('cErr').hidden = false;
+  }
+});
+  function markSubmitted() {
+  const btn = $('submitBtn');
+  btn.textContent = 'Submitted ✓';
+  btn.disabled = true;
+  btn.classList.add('is-submitted');
+
+  const c = picked();
+  $('summaryLine').innerHTML = 'Submitted: <b></b> · <b></b>';
+  const b = $('summaryLine').querySelectorAll('b');
+  b[0].textContent = c.meal || '—';
+  b[1].textContent = c.drink || '—';
+}
+(function restoreOrder() {
+  try {
+    const all = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+    const order = all[SEAT];
+    if (!order) return;
+
+    document.querySelectorAll('.meals .item').forEach(el => {
+      el.classList.toggle('selected', el.querySelector('h3').textContent === order.meal);
+    });
+    document.querySelectorAll('.drinks .item').forEach(el => {
+      el.classList.toggle('selected', el.querySelector('h3').textContent === order.drink);
+    });
+    updateSummary();
+    markSubmitted();
+  } catch (err) {}
+})();
+document.querySelectorAll('[data-group]').forEach(group => {
+  group.addEventListener('click', e => {
+    const card = e.target.closest('.item');
+    if (!card) return;
+    group.querySelectorAll('.item').forEach(c => c.classList.toggle('selected', c === card));
+    resetSubmit();       
+  });
+});
+function resetSubmit() {
+  const btn = $('submitBtn');
+  btn.disabled = false;
+  btn.classList.remove('is-submitted');
+  btn.textContent = 'Submit my choices';
+  try {
+    const all = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+    delete all[SEAT];
+    localStorage.setItem(STORE_KEY, JSON.stringify(all));
+  } catch (err) {  }
+}
+</script>
+</body>
+</html>
