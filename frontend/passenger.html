@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SKYZEN · Passenger wellness</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/passenger.js"></script>
+</head>
+<body>
+  <header><a class="brand" href="/">SKYZEN <span>by CX797</span></a><nav aria-label="Dashboards"><a href="/" aria-current="page">Passenger</a><a href="/crew.html">Cabin crew</a></nav></header>
+  <main>
+    <div class="hero"><p class="eyebrow">YOUR WELLNESS, AT ALTITUDE</p><h1>A calmer journey,<br>planned around you.</h1><p>Meals, caffeine-free drinks and rest suggestions that follow your flight.</p><span class="badge">Prototype · Manual readings · No medical advice</span></div>
+    <p id="message" role="status" aria-live="polite"></p>
+    <section id="enrolment" class="panel">
+      <h2>Your data. Your choice.</h2>
+      <p id="consent-text">Loading the privacy and consent notice…</p>
+      <form id="consent-form">
+        <label class="check consent"><input id="consent-agree" name="consent" type="checkbox" required disabled>I have read the notice above and agree to this data use and sharing with authorised crew. Enable personal-data entry.</label>
+        <fieldset id="consent-fields" disabled>
+          <legend>Flight and wellness preferences</legend>
+          <div class="form-grid">
+            <label>Seat<input name="seat" placeholder="12A" maxlength="4" required pattern="[1-9][0-9]{0,2}[A-Ka-k]"></label>
+            <label>Flight number<input name="flightNumber" placeholder="CX797" maxlength="7" required></label>
+            <label>Departure (UTC)<input name="departure" type="datetime-local" required></label>
+            <label>Arrival (UTC)<input name="arrival" type="datetime-local" required></label>
+            <label>Meal preference<select name="diet"><option value="standard">Balanced standard meal</option><option value="vegetarian">Vegetarian</option></select></label>
+            <label>Rest preference<select name="restPreference"><option value="early">Rest early in the flight</option><option value="late">Rest nearer arrival</option></select></label>
+          </div>
+          <p class="muted">Times are UTC, not your device’s local timezone. Ask crew to confirm the flight timeline.</p>
+          <label>Allergies / ingredient restrictions<textarea name="allergies" maxlength="200" placeholder="Optional. Crew must verify all ingredients and cross-contact risks."></textarea></label>
+          <label class="check"><input name="herbalOptIn" type="checkbox">Request an optional TCM-inspired herbal infusion. I will check with crew about ingredients and avoid herbs if pregnant, taking medication or advised against them.</label>
+          <label class="check"><input name="caffeineSensitive" type="checkbox">I am sensitive to caffeine; suggest caffeine-free drinks.</label>
+          <button type="submit">Agree &amp; start my plan</button>
+        </fieldset>
+      </form>
+    </section>
+    <div id="passenger-dashboard" hidden>
+      <section class="panel flight-strip"><div><p class="eyebrow">YOUR FLIGHT</p><h2 id="flight-title"></h2><p id="flight-times"></p></div><div><span id="flight-phase" class="badge"></span><p id="last-updated" class="muted"></p></div></section>
+      <div class="dashboard-grid">
+        <section class="panel">
+          <h2>Check in with yourself</h2>
+          <p>Enter current readings manually. No wearable is connected. Hydration and stress are self-reported, not clinical measurements.</p>
+          <form id="biomarker-form">
+            <div class="form-grid">
+              <label>Heart rate (bpm)<input name="heartRate" type="number" min="30" max="220" step="1" placeholder="75" required></label>
+              <label>Oxygen saturation (%)<input name="spo2" type="number" min="70" max="100" step="0.1" placeholder="98" required></label>
+              <label>Hydration (0 = low, 100 = high)<input name="hydration" type="number" min="0" max="100" step="1" placeholder="60" required></label>
+              <label>Stress (1 = low, 5 = high)<input name="stress" type="number" min="1" max="5" step="1" placeholder="2" required></label>
+            </div>
+            <button type="submit">Update live recommendations</button>
+          </form>
+          <p id="current-readings" class="muted"></p>
+          <p>Feel unwell? Contact cabin crew directly. This app does not provide medical monitoring or emergency alerts.</p>
+        </section>
+        <section class="panel"><h2>Your flight-aware plan</h2><div id="plan"></div></section>
+      </div>
+      <section class="panel"><h2>Galley coordination</h2><p>Crew-approved heating jobs below are simulations only. No oven is connected.</p><div id="passenger-jobs"></div></section>
+      <section class="panel privacy"><h2>Stay in control</h2><p>Withdraw consent to delete your record, readings and associated simulated galley jobs. This cannot undo data already seen by crew.</p><button id="withdraw" class="secondary" type="button">Withdraw consent &amp; delete my data</button></section>
+    </div>
+  </main>
+  <footer>SKYZEN · In-flight wellness prototype · Follow cabin crew instructions at all times.</footer>
+</body>
+</html>

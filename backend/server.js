@@ -129,16 +129,14 @@ export function createApp({ key, crewToken, dataDir = join(ROOT, 'data'), secure
           consent: { version: CONSENT_VERSION, acceptedAt: new Date(clock()).toISOString() },
           biomarkers: null, updatedAt: null, galleyJobs: []
         };
-        store.records[passenger.id] = passenger;
-        store.save();
+        store.update(records => { records[passenger.id] = passenger; });
         setCookie('skyzen_passenger', token, Math.ceil((Date.parse(profile.arrival) + 24 * 60 * 60_000 - clock()) / 1000));
         return json(201, view(passenger));
       }
       if (path === '/api/passenger' && req.method === 'GET') return json(200, view(passengerAuth()));
       if (path === '/api/passenger' && req.method === 'DELETE') {
         const passenger = passengerAuth();
-        delete store.records[passenger.id];
-        store.save();
+        store.update(records => { delete records[passenger.id]; });
         setCookie('skyzen_passenger', '', 0);
         return json(200, { deleted: true });
       }
@@ -146,10 +144,14 @@ export function createApp({ key, crewToken, dataDir = join(ROOT, 'data'), secure
         const passenger = passengerAuth();
         if (clock() >= Date.parse(passenger.profile.arrival)) throw error(409, 'This flight has arrived; new readings are closed.');
         const biomarkers = validateBiomarkers(await readBody(req));
-        passenger.biomarkers = biomarkers;
-        passenger.updatedAt = new Date(clock()).toISOString();
-        store.save();
-        return json(200, view(passenger));
+        const updated = store.update(records => {
+          const target = records[passenger.id];
+          if (!target) throw error(401, 'Passenger consent has been withdrawn.');
+          target.biomarkers = biomarkers;
+          target.updatedAt = new Date(clock()).toISOString();
+          return target;
+        });
+        return json(200, view(updated));
       }
       if (path === '/api/crew/logout' && req.method === 'POST') {
         sessions.delete(hash(cookie(req, 'skyzen_crew')));
@@ -196,8 +198,7 @@ export function createApp({ key, crewToken, dataDir = join(ROOT, 'data'), secure
           startAt: new Date(startAt).toISOString(), serveAt: new Date(serveAt).toISOString(),
           status: 'simulated', createdAt: new Date(clock()).toISOString()
         };
-        passenger.galleyJobs.push(job);
-        store.save();
+        store.update(records => { records[passenger.id].galleyJobs.push(job); });
         return json(201, { job, simulationOnly: true });
       }
       if (path === '/api/crew/galley/cancel' && req.method === 'POST') {
@@ -206,9 +207,12 @@ export function createApp({ key, crewToken, dataDir = join(ROOT, 'data'), secure
         const passenger = Object.values(store.records).find(item => item.id === body.passengerId);
         const job = passenger?.galleyJobs.find(item => item.id === body.jobId);
         if (!job) throw error(404, 'Job not found.');
-        job.status = 'cancelled';
-        store.save();
-        return json(200, { job, simulationOnly: true });
+        const cancelled = store.update(records => {
+          const target = records[passenger.id].galleyJobs.find(item => item.id === job.id);
+          target.status = 'cancelled';
+          return target;
+        });
+        return json(200, { job: cancelled, simulationOnly: true });
       }
       throw error(404, 'Not found.');
     } catch (err) {

@@ -25,15 +25,33 @@ test('personalises meals, drinks and sleep with flight-bounded timestamps', () =
   const plan = recommend(passenger, now);
   assert.equal(plan.phase, 'in-flight');
   assert.match(plan.meals[0].description, /Vegetarian/);
+  assert.match(plan.meals[0].guidance, /less salty/);
   assert.match(plan.drinks[0].description, /hydration is low/);
   assert.match(plan.drinks[1].description, /ginger/);
   assert.match(plan.sleep.guidance, /slow breathing/);
   assert.equal(plan.sleep.start, '2026-11-14T12:00:00.000Z');
-  assert.equal(plan.sleep.end, '2026-11-14T18:30:00.000Z');
+  assert.equal(plan.sleep.end, '2026-11-14T18:00:00.000Z');
   assert.equal(plan.caffeine.cutoff, '2026-11-14T06:00:00.000Z');
   assert.equal(plan.caffeine.allowedNow, false);
   assert.equal(plan.caffeine.windowStart, null);
   assert.ok(plan.meals.every(meal => Date.parse(meal.at) < Date.parse(profile.arrival)));
+  assert.ok(plan.meals.every(meal => meal.at < plan.sleep.start || meal.at >= plan.sleep.end));
+});
+
+test('late rest allows an optional caffeine window but sensitivity and stress override it', () => {
+  const longFlight = {
+    ...passenger, biomarkers: { ...readings, hydration: 70, stress: 2 },
+    profile: { ...profile, arrival: '2026-11-15T02:00:00Z', restPreference: 'late' }
+  };
+  const plan = recommend(longFlight, now);
+  assert.equal(plan.sleep.start, '2026-11-14T20:30:00.000Z');
+  assert.equal(plan.sleep.end, '2026-11-15T00:30:00.000Z');
+  assert.equal(plan.caffeine.windowStart, profile.departure);
+  assert.equal(plan.caffeine.allowedNow, true);
+  assert.equal(recommend(longFlight, Date.parse(plan.caffeine.cutoff)).caffeine.allowedNow, false);
+  assert.equal(recommend({ ...longFlight, profile: { ...longFlight.profile, caffeineSensitive: true } }, now).caffeine.allowedNow, false);
+  assert.equal(recommend({ ...longFlight, biomarkers: { ...readings, stress: 5 } }, now).caffeine.allowedNow, false);
+  assert.ok(plan.meals.every(meal => meal.at < plan.sleep.start || meal.at >= plan.sleep.end));
 });
 
 test('short flights, stale readings, allergies and concerning readings are handled conservatively', () => {

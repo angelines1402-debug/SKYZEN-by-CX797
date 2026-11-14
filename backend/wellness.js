@@ -3,7 +3,7 @@ const HOUR = 60 * MINUTE;
 
 export const CONSENT_VERSION = '2026-11-14';
 
-export const CONSENT_TEXT = 'With your permission, SKYZEN stores your seat, flight timeline, dietary preferences and manually entered heart rate, oxygen saturation, hydration and stress readings. These are encrypted at rest and shared with authorised cabin crew to coordinate wellness service and simulated meal heating. Recommendations are general wellness guidance, not medical advice or diagnosis. No wearable or aircraft equipment is connected. You may withdraw consent and delete your record at any time. Records are deleted 24 hours after arrival while the server is running, or on its next startup. Do not use this prototype for emergencies; contact cabin crew directly.';
+export const CONSENT_TEXT = 'With your permission, SKYZEN stores your seat, flight timeline, dietary, rest and caffeine preferences and manually entered heart rate, oxygen saturation, hydration and stress readings. These are encrypted at rest and shared with authorised cabin crew to coordinate wellness service and simulated meal heating. Recommendations are general wellness guidance, not medical advice or diagnosis. No wearable or aircraft equipment is connected. You may withdraw consent and delete your record at any time. Records are deleted 24 hours after arrival while the server is running, or on its next startup. Do not use this prototype for emergencies; contact cabin crew directly.';
 
 function fail(message) {
   throw Object.assign(new Error(message), { status: 400 });
@@ -27,10 +27,13 @@ export function validateProfile(input, now = Date.now()) {
   if (!['standard', 'vegetarian'].includes(input.diet)) fail('Choose a supported meal preference.');
   if (typeof input.allergies !== 'string' || input.allergies.length > 200) fail('Allergy notes must be at most 200 characters.');
   if (typeof input.herbalOptIn !== 'boolean') fail('Choose whether to request a herbal drink.');
+  if (input.restPreference !== undefined && !['early', 'late'].includes(input.restPreference)) fail('Choose an early or late rest preference.');
+  if (input.caffeineSensitive !== undefined && typeof input.caffeineSensitive !== 'boolean') fail('Caffeine sensitivity must be true or false.');
   return {
     seat, flightNumber, departure: new Date(departure).toISOString(),
     arrival: new Date(arrival).toISOString(), diet: input.diet,
-    allergies: input.allergies.trim(), herbalOptIn: input.herbalOptIn
+    allergies: input.allergies.trim(), herbalOptIn: input.herbalOptIn,
+    restPreference: input.restPreference || 'early', caffeineSensitive: input.caffeineSensitive || false
   };
 }
 
@@ -62,22 +65,30 @@ export function recommend(passenger, now = Date.now()) {
   const stale = !updatedAt || now - Date.parse(updatedAt) > 30 * MINUTE;
   if (stale) warnings.push('No recent reading (within 30 minutes). Recommendations are provisional; enter a fresh reading.');
   if (profile.allergies) warnings.push('Crew must confirm ingredients and cross-contact safety before any meal or drink is served.');
+  const latestSleepEnd = arrival - 90 * MINUTE;
+  const sleepStart = profile.restPreference === 'late'
+    ? Math.max(departure + 2 * HOUR, latestSleepEnd - 4 * HOUR) : departure + 2 * HOUR;
+  const sleepEnd = profile.restPreference === 'late' ? latestSleepEnd : Math.min(latestSleepEnd, sleepStart + 6 * HOUR);
+  const hasSleep = duration >= 4 * HOUR && sleepEnd > sleepStart;
   const meals = [];
   const firstMeal = departure + (duration <= 2 * HOUR ? 20 : 60) * MINUTE;
+  let mealSlot = 0;
   for (let time = firstMeal; time <= arrival - 45 * MINUTE; time += 4 * HOUR) {
+    mealSlot++;
+    if (hasSleep && time >= sleepStart && time < sleepEnd) continue;
     meals.push({
-      id: `meal-${meals.length + 1}`,
+      id: `meal-${mealSlot}`,
       at: new Date(time).toISOString(),
       description: profile.diet === 'vegetarian'
         ? 'Vegetarian meal: vegetables, whole grains and plant protein'
         : 'Balanced meal: vegetables, whole grains and lean protein',
+      guidance: biomarkers?.hydration < 40
+        ? 'With your low self-reported hydration, ask about a less salty option if consistent with your prescribed diet.'
+        : biomarkers?.stress >= 4 ? 'If you feel stressed, consider a light portion and eat at a comfortable pace.' : 'Choose a comfortable portion; crew will confirm availability and ingredients.',
       status: now > time + 30 * MINUTE ? 'past' : now >= time - 30 * MINUTE ? 'due' : 'upcoming',
       needsIngredientCheck: Boolean(profile.allergies)
     });
   }
-  const sleepStart = departure + 2 * HOUR;
-  const sleepEnd = arrival - 90 * MINUTE;
-  const hasSleep = duration >= 4 * HOUR && sleepEnd > sleepStart;
   const cutoff = (hasSleep ? sleepStart : arrival) - 6 * HOUR;
   const sleep = hasSleep ? {
     start: new Date(sleepStart).toISOString(), end: new Date(sleepEnd).toISOString(),
@@ -89,8 +100,11 @@ export function recommend(passenger, now = Date.now()) {
     cutoff: new Date(cutoff).toISOString(),
     windowStart: cutoff > departure ? profile.departure : null,
     windowEnd: cutoff > departure ? new Date(cutoff).toISOString() : null,
-    allowedNow: now >= departure && now < Math.min(cutoff, arrival) && !warnings.length,
-    guidance: 'Optional caffeine only before the cutoff, at least six hours before planned rest (or arrival on short flights). Sensitivity varies; choose caffeine-free if unsure.'
+    allowedNow: now >= departure && now < Math.min(cutoff, arrival) && !warnings.length &&
+      !profile.caffeineSensitive && !(biomarkers?.stress >= 4),
+    guidance: profile.caffeineSensitive || biomarkers?.stress >= 4
+      ? 'Choose caffeine-free drinks because of your reported caffeine sensitivity or high stress.'
+      : 'Optional caffeine only before the cutoff, at least six hours before planned rest (or arrival on short flights). Sensitivity varies; choose caffeine-free if unsure.'
   };
   const drinks = [{
     type: 'water',
@@ -104,7 +118,7 @@ export function recommend(passenger, now = Date.now()) {
     description: profile.herbalOptIn && !profile.allergies && !warnings.length
       ? 'Optional caffeine-free, TCM-inspired ginger infusion. Ask crew to confirm ingredients; avoid if pregnant, taking medication, or advised against herbs. No therapeutic benefit is claimed.'
       : 'Herbal drink deferred. Choose plain warm water; herbal drinks require opt-in, fresh readings and ingredient review.',
-    at: meals[0]?.at || profile.departure
+    at: meals.find(meal => meal.status !== 'past')?.at || new Date(Math.max(departure, Math.min(now, arrival))).toISOString()
   });
   return {
     phase, generatedAt: new Date(now).toISOString(), stale, warnings, meals, drinks, sleep, caffeine,

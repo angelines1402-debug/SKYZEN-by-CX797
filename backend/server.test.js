@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
@@ -38,8 +38,21 @@ async function fixture(t) {
     return { status: response.status, body: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
   }
   const consent = extra => ({ consent: true, consentVersion: CONSENT_VERSION, profile, ...extra });
-  return { request, dataDir, key, crewToken, consent, setTime: value => { time = value; } };
+  return { request, base, dataDir, key, crewToken, consent, setTime: value => { time = value; } };
 }
+
+test('serves separate dashboards and shared assets without credentials and blocks unknown paths', async t => {
+  const { base, crewToken } = await fixture(t);
+  for (const path of ['/', '/passenger.html', '/crew.html', '/passenger.js', '/crew.js', '/common.js', '/styles.css']) {
+    const response = await fetch(base + path);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+    assert.equal((await response.text()).includes(crewToken), false);
+  }
+  assert.equal((await fetch(base + '/backend/server.js')).status, 404);
+  assert.equal((await fetch(base + '/data/passengers.enc')).status, 404);
+});
 
 test('requires explicit consent and independent passenger/crew authentication', async t => {
   const { request, consent, crewToken } = await fixture(t);
@@ -137,6 +150,40 @@ test('encrypted records reject tampering', () => {
     payload.data = data.toString('base64');
     writeFileSync(store.path, JSON.stringify(payload));
     assert.throws(() => new EncryptedStore(directory, key));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('failed writes leave readings and consent deletion retryable', async t => {
+  const { request, consent, crewToken, dataDir, key } = await fixture(t);
+  const passenger = await request('/api/passengers', { method: 'POST', body: consent() });
+  const crew = await request('/api/crew/login', { method: 'POST', body: { token: crewToken } });
+  const blockedWrite = join(dataDir, 'passengers.enc.tmp');
+  mkdirSync(blockedWrite);
+  assert.equal((await request('/api/passenger/biomarkers', { method: 'POST', cookie: passenger.cookie, body: biomarkers })).status, 500);
+  assert.equal((await request('/api/passenger', { cookie: passenger.cookie })).body.biomarkers, null);
+  assert.equal((await request('/api/passenger', { method: 'DELETE', cookie: passenger.cookie })).status, 500);
+  assert.equal((await request('/api/passenger', { cookie: passenger.cookie })).status, 200);
+  assert.equal((await request('/api/crew/passengers', { cookie: crew.cookie })).body.passengers.length, 1);
+  assert.equal(Object.keys(new EncryptedStore(dataDir, key).records).length, 1);
+  rmSync(blockedWrite, { recursive: true });
+  assert.equal((await request('/api/passenger', { method: 'DELETE', cookie: passenger.cookie })).status, 200);
+  assert.deepEqual(new EncryptedStore(dataDir, key).records, {});
+});
+
+test('failed retention writes retain live state until persistence succeeds', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'skyzen-retention-'));
+  try {
+    const store = new EncryptedStore(directory, randomBytes(32));
+    store.update(records => { records.example = { profile }; });
+    const blockedWrite = join(directory, 'passengers.enc.tmp');
+    mkdirSync(blockedWrite);
+    assert.throws(() => store.purge(Date.parse(profile.arrival) + 24 * 60 * 60_000));
+    assert.ok(store.records.example);
+    rmSync(blockedWrite, { recursive: true });
+    store.purge(Date.parse(profile.arrival) + 24 * 60 * 60_000);
+    assert.deepEqual(store.records, {});
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

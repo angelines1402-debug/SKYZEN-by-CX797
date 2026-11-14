@@ -19,25 +19,34 @@ export class EncryptedStore {
     }
   }
 
-  save() {
+  save(records = this.records) {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.key, iv);
-    const data = Buffer.concat([cipher.update(JSON.stringify(this.records), 'utf8'), cipher.final()]);
+    const data = Buffer.concat([cipher.update(JSON.stringify(records), 'utf8'), cipher.final()]);
     const temporary = `${this.path}.tmp`;
     writeFileSync(temporary, JSON.stringify({
       iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), data: data.toString('base64')
     }), { mode: 0o600 });
     renameSync(temporary, this.path);
+    this.records = records;
+  }
+
+  update(change) {
+    const records = structuredClone(this.records);
+    const result = change(records);
+    this.save(records);
+    return result;
   }
 
   purge(now) {
+    const records = structuredClone(this.records);
     let changed = false;
-    for (const [id, passenger] of Object.entries(this.records)) {
+    for (const [id, passenger] of Object.entries(records)) {
       if (now >= Date.parse(passenger.profile.arrival) + 24 * 60 * 60_000) {
-        delete this.records[id];
+        delete records[id];
         changed = true;
       }
     }
-    if (changed) this.save();
+    if (changed) this.save(records);
   }
 }
