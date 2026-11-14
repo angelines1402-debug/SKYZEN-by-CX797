@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SKYZEN · Cabin crew</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/crew.js"></script>
+</head>
+<body>
+  <header><a class="brand" href="/">SKYZEN <span>by CX797</span></a><nav aria-label="Dashboards"><a href="/">Passenger</a><a href="/crew.html" aria-current="page">Cabin crew</a></nav></header>
+  <main>
+    <div class="hero"><p class="eyebrow">CABIN CARE, CONNECTED</p><h1>Thoughtful service.<br>A shared live view.</h1><p>Consent-enabled passenger readings, wellness plans and galley coordination.</p><span class="badge">Simulation only · No aircraft equipment connected</span></div>
+    <p id="message" role="status" aria-live="polite"></p>
+    <section id="login-panel" class="panel">
+      <h2>Authorised crew access</h2><p>Use the crew credential provided by your prototype administrator. This shared credential is for demonstration only.</p>
+      <form id="login-form"><label>Crew credential<input name="token" type="password" autocomplete="off" required minlength="32"></label><button type="submit">Sign in</button></form>
+    </section>
+    <div id="crew-dashboard" hidden>
+      <section class="panel flight-strip"><div><h2>Live passenger overview</h2><p id="sync-status" class="muted"></p></div><div><button id="refresh" class="secondary" type="button">Refresh now</button> <button id="logout" class="secondary" type="button">Sign out</button></div></section>
+      <p class="notice">Only passengers who explicitly consented appear here. Readings are unverified manual inputs, not medical telemetry. Confirm concerns with the passenger; follow established crew procedures.</p>
+      <div id="passengers" class="dashboard-grid"></div>
+      <section class="panel">
+        <p class="eyebrow">GALLEY · SIMULATED OVEN PROGRAMMING</p><h2>Coordinate heating with a meal plan</h2>
+        <p>The server calculates heating start time from the passenger’s planned meal time and checks oven conflicts. These bounds are demo limits, not food-safe cooking instructions. Use approved catering instructions; do not use this app to operate real equipment.</p>
+        <form id="galley-form">
+          <div class="form-grid">
+            <label>Passenger<select id="galley-passenger" name="passengerId" required></select></label>
+            <label>Planned meal<select id="galley-meal" name="mealId" required></select></label>
+            <label>Simulated machine<select name="machineId"><option value="oven-1">Oven 1 (simulation)</option><option value="oven-2">Oven 2 (simulation)</option></select></label>
+            <label>Temperature (°C)<input name="temperatureC" type="number" min="60" max="220" required placeholder="Approved setting"></label>
+            <label>Heating duration (minutes)<input name="durationMinutes" type="number" min="1" max="45" required placeholder="Approved duration"></label>
+          </div>
+          <label class="check"><input name="crewConfirmed" type="checkbox" required>I have checked the passenger’s ingredients / allergies and approved heating instructions. I understand this creates a simulation only.</label>
+          <button id="schedule" type="submit">Schedule simulated heating</button>
+        </form>
+        <p>Withdrawn passenger records and their jobs are removed automatically. Other jobs can be cancelled from the passenger cards above.</p>
+      </section>
+    </div>
+  </main>
+  <footer>SKYZEN · Crew dashboard · Protect passenger privacy; sign out when finished.</footer>
+</body>
+</html>

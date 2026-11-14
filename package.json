@@ -1,0 +1,14 @@
+{
+  "name": "skyzen",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Consent-first in-flight wellness prototype",
+  "scripts": {
+    "start": "node backend/server.js",
+    "test": "node --test backend/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
