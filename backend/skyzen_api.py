@@ -3,19 +3,19 @@ import random
 from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-try:
-    from backend.wellness_engine import generate_wellness_plans
-except ModuleNotFoundError:
-    from wellness_engine import generate_wellness_plans
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 
 # =====================================================
 # 1. PROJECT CONFIGURATION
 # =====================================================
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 FLIGHT_ID = "CX251"
 UPDATE_INTERVAL = 2
@@ -27,8 +27,6 @@ HISTORY_LIMIT = 60
 THRESHOLDS = {
     "hrv": {"min": 40, "max": 100},
     "spo2": {"min": 94, "max": 100},
-    "sys": {"min": 90, "max": 139},
-    "dia": {"min": 60, "max": 89},
 }
 
 LIVE_SEATS = ["2A", "2K"]
@@ -44,48 +42,36 @@ initial_passengers = {
         "name": "Patricia",
         "hrv": 55,
         "spo2": 98,
-        "sys": 120,
-        "dia": 80,
     },
     "2K": {
         "passenger_id": "P002",
         "name": "Mr. Tanaka",
         "hrv": 52,
         "spo2": 97,
-        "sys": 122,
-        "dia": 80,
     },
     "3D": {
         "passenger_id": "P003",
         "name": "Ms. Larsson",
         "hrv": 36,
         "spo2": 97,
-        "sys": 120,
-        "dia": 78,
     },
     "4F": {
         "passenger_id": "P004",
         "name": "Mr. Okafor",
         "hrv": 58,
         "spo2": 98,
-        "sys": 130,
-        "dia": 84,
     },
     "5C": {
         "passenger_id": "P005",
         "name": "Ms. Dubois",
         "hrv": 48,
         "spo2": 96,
-        "sys": 118,
-        "dia": 76,
     },
     "6A": {
         "passenger_id": "P006",
         "name": "Mr. Chen",
         "hrv": 62,
         "spo2": 99,
-        "sys": 116,
-        "dia": 74,
     },
 }
 
@@ -142,8 +128,6 @@ def get_priority(readings):
     statuses = [
         readings["hrv"]["status"],
         readings["spo2"]["status"],
-        readings["blood_pressure"]["status_systolic"],
-        readings["blood_pressure"]["status_diastolic"],
     ]
 
     if readings["spo2"]["status"] == "LOW":
@@ -168,13 +152,9 @@ def generate_patricia_reading(passenger):
 
     passenger["hrv"] += random.randint(-1, 1)
     passenger["spo2"] += random.choice([-1, 0, 0, 0, 1])
-    passenger["sys"] += random.randint(-1, 1)
-    passenger["dia"] += random.randint(-1, 1)
 
     passenger["hrv"] = clamp(passenger["hrv"], 48, 62)
     passenger["spo2"] = clamp(passenger["spo2"], 96, 100)
-    passenger["sys"] = clamp(passenger["sys"], 116, 126)
-    passenger["dia"] = clamp(passenger["dia"], 76, 84)
 
 
 def generate_tanaka_reading(passenger, tick):
@@ -196,29 +176,21 @@ def generate_tanaka_reading(passenger, tick):
         # Stable
         passenger["hrv"] = 52 + random.randint(-2, 2)
         passenger["spo2"] = 97 + random.randint(-1, 1)
-        passenger["sys"] = 122 + random.randint(-2, 2)
-        passenger["dia"] = 80 + random.randint(-1, 1)
 
     elif phase < 20:
         # Simulated wellness alert
         passenger["hrv"] = 35 + random.randint(-2, 2)
         passenger["spo2"] = 91 + random.randint(-1, 1)
-        passenger["sys"] = 132 + random.randint(-2, 2)
-        passenger["dia"] = 84 + random.randint(-1, 1)
 
     elif phase < 30:
         # Recovery
         passenger["hrv"] = 48 + random.randint(-2, 2)
         passenger["spo2"] = 96 + random.randint(-1, 1)
-        passenger["sys"] = 124 + random.randint(-2, 2)
-        passenger["dia"] = 81 + random.randint(-1, 1)
 
     else:
         # Stable again
         passenger["hrv"] = 54 + random.randint(-2, 2)
         passenger["spo2"] = 98 + random.randint(-1, 1)
-        passenger["sys"] = 120 + random.randint(-2, 2)
-        passenger["dia"] = 79 + random.randint(-1, 1)
 
 
 def update_live_passengers():
@@ -260,18 +232,6 @@ def process_passenger(seat, passenger, timestamp):
             "timestamp": timestamp,
         },
 
-        "blood_pressure": {
-            "systolic": passenger["sys"],
-            "diastolic": passenger["dia"],
-            "unit": "mmHg",
-            "status_systolic": get_threshold_status(
-                "sys", passenger["sys"]
-            ),
-            "status_diastolic": get_threshold_status(
-                "dia", passenger["dia"]
-            ),
-            "timestamp": timestamp,
-        },
     }
 
     priority = get_priority(readings)
@@ -288,12 +248,6 @@ def process_passenger(seat, passenger, timestamp):
             f"SpO2 {passenger['spo2']}%"
         )
 
-    if readings["blood_pressure"]["status_systolic"] != "NORMAL":
-        flags.append("Systolic BP outside demo range")
-
-    if readings["blood_pressure"]["status_diastolic"] != "NORMAL":
-        flags.append("Diastolic BP outside demo range")
-
     data_source = (
         "LIVE_SIMULATION"
         if seat in LIVE_SEATS
@@ -307,7 +261,6 @@ def process_passenger(seat, passenger, timestamp):
         "priority": priority,
         "hrv": readings["hrv"],
         "spo2": readings["spo2"],
-        "blood_pressure": readings["blood_pressure"],
         "flags": flags,
         "data_source": data_source,
     }
@@ -414,10 +367,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount(
+    "/static",
+    StaticFiles(directory=FRONTEND_DIR),
+    name="static",
+)
+
 
 # =====================================================
 # 9. API ENDPOINTS
 # =====================================================
+
+@app.get("/passenger", include_in_schema=False)
+def passenger_page():
+    return FileResponse(FRONTEND_DIR / "passenger" / "passenger.html")
+
+
+@app.get("/crew", include_in_schema=False)
+def crew_page():
+    return FileResponse(FRONTEND_DIR / "crew" / "crew.html")
+
 
 @app.get("/")
 def home():
@@ -444,45 +413,21 @@ def snapshot():
 
     return get_snapshot()
 
+
 @app.get("/wellness")
 def wellness_all():
-    """Generate wellness plans for all six passengers."""
-
-    snapshot_data = get_snapshot()
-
-    plans = generate_wellness_plans(
-        snapshot_data["passengers"]
+    raise HTTPException(
+        status_code=501,
+        detail="Wellness plans are not implemented yet.",
     )
-
-    return {
-        "flight_id": FLIGHT_ID,
-        "timestamp": snapshot_data["timestamp"],
-        "total_passengers": len(plans),
-        "plans": plans,
-    }
 
 
 @app.get("/wellness/{seat}")
 def wellness_detail(seat: str):
-    """Generate a wellness plan for one passenger."""
-
-    seat = seat.upper()
-
-    if seat not in live_data:
-        raise HTTPException(
-            status_code=404,
-            detail="Passenger seat not found",
-        )
-
-    passenger = process_passenger(
-        seat,
-        live_data[seat],
-        datetime.now(timezone.utc).isoformat(),
+    raise HTTPException(
+        status_code=501,
+        detail="Wellness plans are not implemented yet.",
     )
-
-    plans = generate_wellness_plans([passenger])
-
-    return plans[seat]
 
 
 @app.get("/passengers/{seat}")
