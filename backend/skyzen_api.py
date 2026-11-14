@@ -10,17 +10,20 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 if __package__:
     from .wellness_engine import (
         DEMO_THRESHOLDS,
         analyse_passenger,
+        build_schedule,
         generate_wellness_plans,
     )
 else:
     from wellness_engine import (
         DEMO_THRESHOLDS,
         analyse_passenger,
+        build_schedule,
         generate_wellness_plans,
     )
 
@@ -32,6 +35,7 @@ else:
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 FLIGHT_ID = "CX844"
+FLIGHT_DEPARTURE_TIME = datetime.now(timezone.utc)
 UPDATE_INTERVAL = 2
 HISTORY_LIMIT = 60
 
@@ -53,6 +57,23 @@ LIVE_SEATS = ["2A", "2K"]
 CATHERINE_NAUSEA_START_TICK = 8
 
 
+class CoffeeDecisionRequest(BaseModel):
+    decision: Literal["yes", "no"]
+
+
+class TCMDrinkDecisionRequest(BaseModel):
+    decision: Literal["yes", "no"]
+    drink: Literal[
+        "Harmony Tea 陳皮菊花茶",
+        "Evening Calm 酸棗仁百合紅棗茶",
+        "Morning Revive 黃耆紅棗枸杞茶",
+    ] | None = None
+
+
+class MealPrepDecisionRequest(BaseModel):
+    decision: Literal["yes", "no"]
+
+
 # =====================================================
 # 2. INITIAL PASSENGER DATA
 # =====================================================
@@ -64,13 +85,23 @@ initial_passengers = {
         "hrv": 55,
         "spo2": 98,
         "reported_symptom": None,
+        "sleep_plan": {
+            "dinner_hours_after_departure": 4,
+            "sleep_start_hours_after_departure": 6.5,
+            "sleep_duration_hours": 6,
+            "biomarker_reminder_minutes_before_sleep": 30,
+        },
     },
     "2K": {
         "passenger_id": "P002",
-        "name": "Stella",
+        "name": "Ms. Stella",
         "hrv": 36,
         "spo2": 97,
         "reported_symptom": "fatigue",
+        "sleep_plan": {
+            "sleep_start_hours_after_departure": 5,
+            "sleep_duration_hours": 9,
+        },
     },
     "3D": {
         "passenger_id": "P003",
@@ -101,6 +132,11 @@ initial_passengers = {
 
 live_data = {}
 history = {}
+coffee_decisions = {}
+cabin_coffee_orders = {}
+tcm_drink_decisions = {}
+cabin_tcm_orders = {}
+meal_prep_decisions = {}
 
 simulation_running = True
 simulation_task = None
@@ -111,6 +147,9 @@ def reset_data():
     """Restore all six passengers to their initial readings."""
 
     global live_data, history, simulation_tick
+    global coffee_decisions, cabin_coffee_orders
+    global tcm_drink_decisions, cabin_tcm_orders
+    global meal_prep_decisions
 
     live_data = {
         seat: passenger.copy()
@@ -121,6 +160,11 @@ def reset_data():
         seat: deque(maxlen=HISTORY_LIMIT)
         for seat in live_data
     }
+    coffee_decisions = {}
+    cabin_coffee_orders = {}
+    tcm_drink_decisions = {}
+    cabin_tcm_orders = {}
+    meal_prep_decisions = {}
 
     simulation_tick = 0
 
@@ -183,8 +227,8 @@ def generate_catherine_reading(passenger, tick):
     )
 
 
-def generate_tanaka_reading(passenger):
-    """Stella reports fatigue from the start; readings stay in the demo range."""
+def generate_stella_reading(passenger):
+    """Ms. Stella reports fatigue from the start; readings stay in the demo range."""
 
     passenger["hrv"] = 36 + random.randint(-2, 2)
     passenger["spo2"] = 97 + random.randint(-1, 1)
@@ -199,7 +243,7 @@ def update_live_passengers():
     simulation_tick += 1
 
     generate_catherine_reading(live_data["2A"], simulation_tick)
-    generate_tanaka_reading(live_data["2K"])
+    generate_stella_reading(live_data["2K"])
 
 
 # =====================================================
@@ -249,7 +293,7 @@ def process_passenger(seat, passenger, timestamp):
         else "PREDEFINED_PROFILE"
     )
 
-    return {
+    processed = {
         "flight_id": FLIGHT_ID,
         "passenger_id": passenger["passenger_id"],
         "seat": seat,
@@ -260,7 +304,18 @@ def process_passenger(seat, passenger, timestamp):
         "reported_symptom": passenger.get("reported_symptom"),
         "flags": flags,
         "data_source": data_source,
+        "flight_elapsed_hours": (
+            datetime.now(timezone.utc) - FLIGHT_DEPARTURE_TIME
+        ).total_seconds() / 3600,
+        "schedule": build_schedule(passenger.get("sleep_plan")),
+        "coffee_decision": coffee_decisions.get(seat),
+        "tcm_drink_decision": tcm_drink_decisions.get(seat),
+        "meal_prep_decision": meal_prep_decisions.get(seat),
     }
+    if "sleep_plan" in passenger:
+        processed["sleep_plan"] = passenger["sleep_plan"].copy()
+
+    return processed
 
 
 # =====================================================
@@ -382,7 +437,7 @@ def passenger_page():
 
 @app.get("/crew", include_in_schema=False)
 def crew_page():
-    return FileResponse(FRONTEND_DIR / "crew" / "crew.html")
+    return FileResponse(FRONTEND_DIR / "passenger" / "crewview.html")
 
 
 @app.get("/")
@@ -409,6 +464,68 @@ def health():
 def snapshot():
 
     return get_snapshot()
+
+
+@app.get("/crew/requests")
+def crew_coffee_requests():
+    return {
+        "requests": [
+            *cabin_coffee_orders.values(),
+            *cabin_tcm_orders.values(),
+        ],
+    }
+
+
+@app.post("/crew/meal-prep/{seat}")
+def crew_meal_prep_decision(
+    seat: str,
+    payload: MealPrepDecisionRequest,
+):
+    seat = seat.upper()
+    if seat not in live_data:
+        raise HTTPException(status_code=404, detail="Passenger seat not found")
+
+    existing_decision = meal_prep_decisions.get(seat)
+    if existing_decision is not None:
+        return existing_decision
+
+    dinner = next(
+        (
+            event for event in build_schedule(live_data[seat].get("sleep_plan"))
+            if event["type"] == "dinner"
+        ),
+        None,
+    )
+    elapsed_hours = (
+        datetime.now(timezone.utc) - FLIGHT_DEPARTURE_TIME
+    ).total_seconds() / 3600
+    if (
+        dinner is None
+        or dinner["hour"] < 0.5
+        or elapsed_hours < dinner["hour"] - 0.5
+        or elapsed_hours >= dinner["hour"]
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="The meal-prep action is outside its scheduled 30-minute window.",
+        )
+
+    meal_prep_decision = {
+        "seat": seat,
+        "name": live_data[seat]["name"],
+        "decision": payload.decision,
+        "meal_hour": dinner["hour"],
+        "decided_at": datetime.now(timezone.utc).isoformat(),
+        "oven": "Oven A",
+        "oven_status": (
+            "Simulated preheating"
+            if payload.decision == "yes"
+            else "Not preheated"
+        ),
+        "demo_only": True,
+    }
+    meal_prep_decisions[seat] = meal_prep_decision
+    return meal_prep_decision
 
 
 @app.get("/wellness")
@@ -478,6 +595,137 @@ def passenger_detail(seat: str):
         live_data[seat],
         datetime.now(timezone.utc).isoformat(),
     )
+
+
+@app.post("/passengers/{seat}/coffee")
+def passenger_coffee_decision(seat: str, payload: CoffeeDecisionRequest):
+    seat = seat.upper()
+    if seat not in live_data:
+        raise HTTPException(
+            status_code=404,
+            detail="Passenger seat not found",
+        )
+
+    existing_decision = coffee_decisions.get(seat)
+    if existing_decision is not None:
+        return existing_decision
+
+    order = None
+    if payload.decision == "yes":
+        cutoff = next(
+            (
+                event for event in build_schedule(
+                    live_data[seat].get("sleep_plan")
+                )
+                if event["type"] == "caffeine_cutoff"
+            ),
+            None,
+        )
+        if cutoff is None or cutoff["hour"] < 0:
+            raise HTTPException(
+                status_code=409,
+                detail="The coffee request window is before CX844 departure.",
+            )
+
+        elapsed_hours = (
+            datetime.now(timezone.utc) - FLIGHT_DEPARTURE_TIME
+        ).total_seconds() / 3600
+        if elapsed_hours < cutoff["hour"]:
+            raise HTTPException(
+                status_code=409,
+                detail="The coffee request window has not opened yet.",
+            )
+        if elapsed_hours >= cutoff["hour"] + cutoff["window_hours"]:
+            raise HTTPException(
+                status_code=409,
+                detail="The coffee request window has closed.",
+            )
+
+        sent_at = datetime.now(timezone.utc).isoformat()
+        order = {
+            "id": f"{seat}-{int(datetime.now(timezone.utc).timestamp() * 1000)}",
+            "seat": seat,
+            "name": live_data[seat]["name"],
+            "item": "Coffee",
+            "request_type": "Coffee",
+            "sent_at": sent_at,
+            "status": "Requested",
+        }
+        cabin_coffee_orders[seat] = order
+
+    decision = {
+        "seat": seat,
+        "decision": payload.decision,
+        "decided_at": datetime.now(timezone.utc).isoformat(),
+        "order": order,
+    }
+    coffee_decisions[seat] = decision
+    return decision
+
+
+@app.post("/passengers/{seat}/tcm-drink")
+def passenger_tcm_drink_decision(
+    seat: str,
+    payload: TCMDrinkDecisionRequest,
+):
+    seat = seat.upper()
+    if seat not in live_data:
+        raise HTTPException(status_code=404, detail="Passenger seat not found")
+
+    existing_decision = tcm_drink_decisions.get(seat)
+    if existing_decision is not None:
+        return existing_decision
+
+    schedule = build_schedule(live_data[seat].get("sleep_plan"))
+    tcm_event = next(
+        (event for event in schedule if event["type"] == "tcm_drink"),
+        None,
+    )
+    sleep_start = next(
+        (event for event in schedule if event["type"] == "sleep_start"),
+        None,
+    )
+    elapsed_hours = (
+        datetime.now(timezone.utc) - FLIGHT_DEPARTURE_TIME
+    ).total_seconds() / 3600
+    if (
+        tcm_event is None
+        or sleep_start is None
+        or elapsed_hours < tcm_event["hour"]
+        or elapsed_hours >= sleep_start["hour"]
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="The TCM drink request is outside its scheduled window.",
+        )
+
+    order = None
+    if payload.decision == "yes":
+        if payload.drink is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Choose a TCM drink before ordering.",
+            )
+        sent_at = datetime.now(timezone.utc).isoformat()
+        order = {
+            "id": f"{seat}-tcm-{int(datetime.now(timezone.utc).timestamp() * 1000)}",
+            "seat": seat,
+            "name": live_data[seat]["name"],
+            "item": payload.drink,
+            "request_type": "TCM drink",
+            "sent_at": sent_at,
+            "status": "Requested",
+        }
+        cabin_tcm_orders[seat] = order
+
+    decision = {
+        "seat": seat,
+        "decision": payload.decision,
+        "decided_at": datetime.now(timezone.utc).isoformat(),
+        "order": order,
+    }
+    tcm_drink_decisions[seat] = decision
+    return decision
 
 
 @app.get("/history/{seat}")

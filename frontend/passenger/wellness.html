@@ -193,9 +193,9 @@
           <svg viewBox="0 0 24 24"><path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7"/></svg>
         </div>
         <div>
-          <div class="label">Meal</div>
-          <h3 id="mealTitle">Low-Sodium Dinner</h3>
-          <p id="mealDesc">Steamed sea bass, jasmine rice, greens</p>
+          <div class="label" id="mealLabel">Recommended meal</div>
+          <h3 id="mealTitle">Loading meal recommendation…</h3>
+          <p id="mealDesc">Loading the wellness-engine menu.</p>
         </div>
       </div>
 
@@ -205,8 +205,8 @@
         </div>
         <div>
           <div class="label">Drink</div>
-          <h3 id="drinkTitle">Hawthorn Tea</h3>
-          <p id="drinkDesc">Supports circulation · TCM blend</p>
+          <h3 id="drinkTitle">Harmony Tea 陳皮菊花茶</h3>
+          <p id="drinkDesc">Caffeine-free · Aged tangerine peel, chrysanthemum and goji berries</p>
         </div>
       </div>
 
@@ -227,6 +227,7 @@
     <svg viewBox="0 0 24 24"><path d="M20 12H4M10 6l-6 6 6 6"/></svg>
   </a>
 
+<script src="/static/js/api.js"></script>
 <script>
   document.querySelectorAll('.reveal').forEach((el, i) => el.style.animationDelay = (i * 80) + 'ms');
   document.querySelectorAll('.glass').forEach(el => {
@@ -236,35 +237,63 @@
       el.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
     });
   });
-const SEAT = '2A';                                   // same seat as in meals.html
-const MEALS = {
-  'Low-Sodium Dinner':  'Steamed sea bass, jasmine rice, greens',
-  'Hydration Bowl':     'Cucumber, watermelon, mint',
-  'TCM Wellness Plate': 'Congee, ginger, goji berries',
-  'Light Breakfast':    'Oats, berries, almond milk'
-};
+const SEAT = new URLSearchParams(window.location.search).get('seat') || '2A';
 const DRINKS = {
-  'Hawthorn Tea':      'Supports circulation · TCM blend',
-  'Chrysanthemum':     'Calms eyes · heat relief',
-  'Ginger Jujube':     'Warmth · supports digestion',
-  'Electrolyte Water': 'Rehydration · electrolyte balance'
+  'Harmony Tea 陳皮菊花茶': 'With dinner or breakfast · Aged tangerine peel, chrysanthemum and goji berries · Caffeine-free',
+  'Evening Calm 酸棗仁百合紅棗茶': 'Before rest · Jujube seed, lily bulb and red dates · Caffeine-free',
+  'Morning Revive 黃耆紅棗枸杞茶': 'Before landing · Astragalus, red dates and goji berries · Caffeine-free'
 };
 
-function applyChoices() {
+document.querySelectorAll('a[href="dashboard4.html"]').forEach(link => {
+  const url = new URL(link.href);
+  url.searchParams.set('seat', SEAT);
+  link.href = url.href;
+});
+
+async function applyChoices() {
   let order = null;
-  try { order = (JSON.parse(localStorage.getItem('skyzen_orders') || '{}'))[SEAT]; } catch (e) {}
-  if (!order) return;                                // nothing submitted yet: keep the defaults
-  if (order.meal) {
-    document.getElementById('mealTitle').textContent = order.meal;
-    document.getElementById('mealDesc').textContent  = MEALS[order.meal] || 'Chosen by you';
+  try {
+    order = (JSON.parse(localStorage.getItem('skyzen_orders') || '{}'))[SEAT];
+  } catch (error) {
+    console.error('Unable to read saved meal choices:', error);
   }
-  if (order.drink) {
+
+  const plan = await getWellness(SEAT);
+  const meals = plan.menus.available.flatMap(menuName =>
+    plan.menus[menuName.toLowerCase()].map(meal => ({ menuName, meal }))
+  );
+  const selectedMeal = order?.meal
+    ? meals.find(({ meal }) => meal.name === order.meal)
+    : null;
+  const meal = selectedMeal || meals[0];
+  if (!meal) {
+    throw new Error('The wellness engine returned no available meals.');
+  }
+
+  document.getElementById('mealLabel').textContent = selectedMeal
+    ? 'Your selected meal'
+    : plan.menus.recommended
+      ? `Recommended for ${plan.menus.symptom}`
+      : 'Wellness meal option';
+  document.getElementById('mealTitle').textContent = meal.meal.name;
+  document.getElementById('mealDesc').textContent =
+    `${meal.meal.description} · ${meal.meal.tag}`;
+
+  if (order?.drink) {
     document.getElementById('drinkTitle').textContent = order.drink;
     document.getElementById('drinkDesc').textContent  = DRINKS[order.drink] || 'Chosen by you';
   }
 }
-applyChoices();
-window.addEventListener('storage', e => { if (e.key === 'skyzen_orders') applyChoices(); });
+function refreshChoices() {
+  applyChoices().catch(error => {
+    document.getElementById('mealLabel').textContent = 'Meal recommendation unavailable';
+    document.getElementById('mealTitle').textContent = 'Could not load a meal';
+    document.getElementById('mealDesc').textContent = 'Please refresh to try again.';
+    console.error('Meal recommendation error:', error);
+  });
+}
+refreshChoices();
+window.addEventListener('storage', e => { if (e.key === 'skyzen_orders') refreshChoices(); });
 </script>
 </body>
 </html>

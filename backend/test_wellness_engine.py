@@ -90,6 +90,45 @@ class WellnessEngineTests(unittest.TestCase):
                 {"flight_phase": "taxi"},
             )
 
+    def test_schedule_is_calculated_from_passenger_sleep_plan(self):
+        passenger = make_passenger(hrv=55, spo2=98)
+        passenger["sleep_plan"] = {
+            "dinner_hours_after_departure": 4,
+            "sleep_start_hours_after_departure": 6.5,
+            "sleep_duration_hours": 6,
+            "biomarker_reminder_minutes_before_sleep": 30,
+        }
+
+        schedule = analyse_passenger(passenger)["schedule"]
+        hours = {event["type"]: event["hour"] for event in schedule}
+
+        self.assertEqual(hours["dinner"], 4)
+        self.assertEqual(hours["caffeine_cutoff"], 0.5)
+        self.assertEqual(hours["tcm_drink"], 5.5)
+        self.assertEqual(hours["biomarker_reminder"], 6)
+        self.assertEqual(hours["sleep_recommendation"], 4)
+        self.assertEqual(hours["sleep_start"], 6.5)
+        self.assertEqual(hours["wake_up"], 12.5)
+        coffee_prompt = next(
+            event for event in schedule
+            if event["type"] == "caffeine_cutoff"
+        )
+        self.assertEqual(coffee_prompt["window_hours"], 0.25)
+
+    def test_caffeine_cutoff_before_departure_is_preserved(self):
+        passenger = make_passenger(hrv=55, spo2=98)
+        passenger["sleep_plan"] = {
+            "sleep_start_hours_after_departure": 5,
+            "sleep_duration_hours": 9,
+        }
+
+        schedule = analyse_passenger(passenger)["schedule"]
+        cutoff = next(
+            event for event in schedule if event["type"] == "caffeine_cutoff"
+        )
+
+        self.assertEqual(cutoff["hour"], -1)
+
 
 if __name__ == "__main__":
     unittest.main()

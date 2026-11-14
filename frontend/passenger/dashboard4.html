@@ -114,6 +114,19 @@
     border-radius: 34px;
     box-shadow: 0 10px 30px rgba(5, 20, 40, .35);
   }
+  .flight-flip { cursor: pointer; border-radius: 34px; overflow: hidden; }
+  .flight-flip:focus-visible { outline: 3px solid #fff; outline-offset: -3px; }
+  .flight-flip-inner { display: grid; }
+  .flight-face { grid-area: 1 / 1; transition: opacity .3s ease, transform .3s ease; }
+  .flight-front { opacity: 1; transform: translateX(0); }
+  .flight-history-face { opacity: 0; pointer-events: none; transform: translateX(18px); background: linear-gradient(140deg, #1c3a6e, #0a1429); }
+  .flight-flip.is-flipped .flight-front { opacity: 0; pointer-events: none; transform: translateX(-18px); }
+  .flight-flip.is-flipped .flight-history-face { opacity: 1; pointer-events: auto; transform: translateX(0); }
+  .flight-flip-hint { margin-top: 18px; color: #b8c4d9; font-size: clamp(11px, .9vw, 16px); text-align: right; }
+  .flight-history-route { margin-top: clamp(22px, 2.2vw, 40px); }
+  .flight-history-route .route { margin-top: 0; }
+  .flight-history-connection { margin-top: clamp(16px, 1.8vw, 32px); color: #e3e9f3; font-size: clamp(13px, 1.1vw, 21px); }
+  .flight-history-empty { margin-top: clamp(22px, 2.2vw, 40px); color: #d0d9e8; font-size: clamp(14px, 1.3vw, 24px); }
   .eyebrow {
     font-size: clamp(11px, .95vw, 18px);
     letter-spacing: .28em;
@@ -163,6 +176,7 @@
   .activity {
     background: linear-gradient(100deg, #2183b8 0%, #2a6fae 50%, #2a58a0 100%);
     color: #fff;
+    text-decoration: none;
     border-radius: 34px;
     padding: clamp(20px, 2vw, 36px) clamp(22px, 2vw, 34px);
     display: flex;
@@ -170,6 +184,7 @@
     align-items: center;
     box-shadow: 0 10px 30px rgba(10, 50, 100, .3);
   }
+  .activity:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
   .activity .eyebrow { color: #cfe3f5; font-size: clamp(11px, .9vw, 17px); }
   .activity h2 {
     font-size: clamp(20px, 1.9vw, 36px);
@@ -177,6 +192,12 @@
     margin: clamp(14px, 1.3vw, 24px) 0 clamp(8px, .8vw, 14px);
   }
   .activity p { font-size: clamp(14px, 1.3vw, 24px); color: #e1eefa; }
+  .activity-copy { flex: 1; min-width: 0; }
+  .activity-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .activity-controls button { border: 1px solid rgba(255,255,255,.55); border-radius: 999px; padding: 8px 16px; background: rgba(15,42,58,.78); color: #fff; font: inherit; font-size: clamp(13px, 1vw, 18px); font-weight: 600; cursor: pointer; }
+  .activity-controls button:hover { background: rgba(15,42,58,.95); }
+  .activity-controls button:focus-visible, .action-dialog button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  .activity-controls button:disabled, .action-dialog button:disabled { opacity: .6; cursor: wait; }
   .activity .icon {
     width: clamp(56px, 4.6vw, 90px);
     height: clamp(56px, 4.6vw, 90px);
@@ -187,6 +208,18 @@
     font-size: clamp(28px, 2.4vw, 46px);
     flex-shrink: 0;
   }
+  .action-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(7,15,34,.78); backdrop-filter: blur(10px); }
+  .action-overlay[hidden] { display: none; }
+  .action-dialog { width: min(100%, 560px); padding: clamp(24px, 4vw, 42px); border: 1px solid rgba(210,225,255,.35); border-radius: 30px; background: linear-gradient(145deg, #182346, #0d142c); color: #f4f6ff; box-shadow: 0 24px 70px rgba(0,0,0,.4); }
+  .action-dialog .eyebrow { color: #b6c4f4; }
+  .action-dialog h2 { margin-top: 12px; font-size: clamp(24px, 2.4vw, 36px); }
+  .action-dialog p { margin-top: 12px; color: #d3daf1; line-height: 1.5; }
+  .sensor-countdown { display: flex; align-items: baseline; gap: 8px; margin-top: 22px; color: #fff; }
+  .sensor-countdown span { font-size: clamp(54px, 8vw, 82px); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .sensor-countdown small { font-size: 18px; color: #cbd6f2; }
+  .action-dialog .demo-disclaimer { font-size: 13px; color: #aeb8d8; }
+  .action-dialog .activity-controls button { background: rgba(255,255,255,.12); }
+  .action-dialog .activity-controls button.primary { background: #dce5ff; color: #152044; }
 
   /* Status cards */
   .status {
@@ -269,11 +302,21 @@
   .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
   .pill.warn { background: #fdf0dc; color: #b86a00; }
   .pill.warn::before { background: var(--amber); }
+  .status.jet-lag { background: linear-gradient(135deg, #111b3b, #26345d); border-color: rgba(205,220,255,.3); color: #fff; }
+  a.status.jet-lag { display: block; color: inherit; text-decoration: none; cursor: pointer; }
+  a.status.jet-lag:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+  .status.jet-lag .label, .status.jet-lag .sub { color: #cbd6f2; }
+  .status.jet-lag .value { color: #fff; }
+  .sleep-countdown { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(205,220,255,.2); }
+  .sleep-countdown svg { width: 28px; height: 28px; flex-shrink: 0; stroke: #d7ddff; filter: drop-shadow(0 0 7px rgba(175,190,255,.65)); }
+  .sleep-countdown-copy { display: grid; gap: 3px; }
+  .sleep-countdown-copy strong { color: #cbd6f2; font-size: clamp(11px, .9vw, 16px); font-weight: 500; }
+  .sleep-countdown-copy span { color: #fff; font-size: clamp(17px, 1.4vw, 26px); font-weight: 600; }
 
   /* Bottom nav cards */
   .nav {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr;
     gap: clamp(12px, 1.3vw, 24px);
     margin-top: clamp(12px, 1.3vw, 24px);
   }
@@ -419,6 +462,7 @@
   @media (prefers-reduced-motion: reduce) {
     .blobs i, .reveal { animation: none; opacity: 1; transform: none; }
     .card, .nav a, .flight, .activity, .plan { transition: none; }
+    .flight-face { transition: none; }
   }
 
   /* ============ UNIFIED WHITE GLASS PALETTE ============ */
@@ -555,40 +599,66 @@
       <strong id="passenger-name">Catherine</strong>
       <small class="seat" id="passenger-seat">Seat 2A</small>
     </div>
-
     <div class="grid">
 
       <!-- Left column -->
       <div class="left">
-        <section class="flight reveal">
-          <div class="eyebrow">Cathay Pacific · In flight</div>
-          <div class="route">
-            <div class="end">
-              <div class="code">HKG</div>
-              <div class="city">Hong Kong</div>
-            </div>
-            <div class="path">
-              <svg viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
-            </div>
-            <div class="end">
-              <div class="code">JFK</div>
-              <div class="city">New York City</div>
-            </div>
+        <div class="flight-flip reveal" id="flight-flip-card" role="button" tabindex="0" aria-pressed="false" aria-label="Show flight history">
+          <div class="flight-flip-inner">
+            <section class="flight flight-face flight-front" id="in-flight-face" aria-hidden="false">
+              <div class="eyebrow">Cathay Pacific · In flight</div>
+              <div class="route">
+                <div class="end">
+                  <div class="code">HKG</div>
+                  <div class="city">Hong Kong</div>
+                </div>
+                <div class="path">
+                  <svg viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                </div>
+                <div class="end">
+                  <div class="code">JFK</div>
+                  <div class="city">New York City</div>
+                </div>
+              </div>
+              <div class="times">
+                <span>Local time 19:24</span>
+                <span>Destination 06:24</span>
+              </div>
+              <div class="data-source" id="data-source">Connecting to live passenger data…</div>
+              <div class="flight-flip-hint">Click or press Enter to view flight history</div>
+            </section>
+            <section class="flight flight-face flight-history-face" id="flight-history-face" aria-hidden="true">
+              <div class="eyebrow">Flight History</div>
+              <div class="flight-history-route" id="stella-flight-history" hidden>
+                <div class="route">
+                  <div class="end">
+                    <div class="code">CGK</div>
+                    <div class="city">Jakarta</div>
+                  </div>
+                  <div class="path">
+                    <svg viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                  </div>
+                  <div class="end">
+                    <div class="code">HKG</div>
+                    <div class="city">Hong Kong</div>
+                  </div>
+                </div>
+                <div class="flight-history-connection">Arrived 3 hours before CX844 departed.</div>
+              </div>
+              <p class="flight-history-empty" id="no-flight-history">No previous flight history available.</p>
+              <div class="flight-flip-hint">Click or press Enter to return to in-flight details</div>
+            </section>
           </div>
-          <div class="times">
-            <span>Local time 19:24</span>
-            <span>Destination 06:24</span>
-          </div>
-          <div class="data-source" id="data-source">Connecting to live passenger data…</div>
-        </section>
+        </div>
 
-        <section class="activity reveal">
-          <div>
-            <div class="eyebrow">Next activity</div>
-            <h2>Hawthorn Hydration Drink</h2>
-            <p>In 20 minutes</p>
+        <section class="activity reveal" aria-labelledby="next-action-title">
+          <div class="activity-copy">
+            <div class="eyebrow" id="next-action-label">Recommended action</div>
+            <h2 id="next-action-title">Checking your schedule…</h2>
+            <p id="next-action-description" role="status" aria-live="polite"></p>
+            <div class="activity-controls" id="next-action-controls"></div>
           </div>
-          <div class="icon">🍵</div>
+          <div class="icon" id="next-action-icon" aria-hidden="true">✦</div>
         </section>
       </div>
 
@@ -604,11 +674,18 @@
           <div class="sub" id="reported-symptom">No symptom reported</div>
         </div>
 
-        <div class="card status reveal">
+        <a class="card status jet-lag reveal" href="/static/passenger/sleep.html" aria-label="Open your personalized sleep schedule">
           <div class="label">Jet Lag Phase</div>
           <div class="value">Adapting</div>
-          <div class="sub">-8h to London</div>
-        </div>
+          <div class="sub">-8h to New York City</div>
+          <div class="sleep-countdown" role="status" aria-live="polite">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 8.5 0 1 0 20.5 15.5z"/></svg>
+            <div class="sleep-countdown-copy">
+              <strong>Next sleep cycle</strong>
+              <span id="sleep-countdown">Loading schedule…</span>
+            </div>
+          </div>
+        </a>
 
         <a class="plan reveal" href="/static/passenger/wellness.html">
           <span class="badge">
@@ -645,22 +722,39 @@
 
     <!-- Navigation cards -->
     <nav class="nav">
-      <a class="reveal" href="/static/passenger/sleep.html">
-        <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-        Sleep Mode
-      </a>
       <a class="reveal" href="/static/passenger/meals.html">
         <svg viewBox="0 0 24 24"><path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7"/></svg>
         Meals
-      </a>
-      <a class="reveal" href="/static/passenger/profile.html">
-        <svg viewBox="0 0 24 24"><path d="M20.400 5.600a5 5 0 0 0-7.100 0L12 7l-1.300-1.400a5 5 0 0 0-7.100 7.100L12 21l8.400-8.300a5 5 0 0 0 0-7.100z"/><path d="M6 12h3l1.500-2.500 2 5 1.500-2.500h3"/></svg>
-        Profile
       </a>
     </nav>
 
   </div>
 
+  <div class="action-overlay" id="tcm-modal" hidden>
+    <section class="action-dialog" role="dialog" aria-modal="true" aria-labelledby="tcm-modal-title">
+      <div id="tcm-scan-step">
+        <div class="eyebrow">10-second guided check</div>
+        <h2 id="tcm-modal-title">Place both hands on the sensor</h2>
+        <p>Rest your hands on the cabin sensor and keep still while the guide counts down.</p>
+        <div class="sensor-countdown"><span id="sensor-countdown">10</span><small>seconds</small></div>
+        <p class="demo-disclaimer">Demo only: this countdown does not read from a connected sensor.</p>
+        <div class="activity-controls">
+          <button type="button" id="cancel-tcm-check">Cancel</button>
+        </div>
+      </div>
+      <div id="tcm-result-step" hidden>
+        <div class="eyebrow">Personalized TCM recommendation</div>
+        <h2 id="tcm-recommendation-name">Finding a drink recommendation…</h2>
+        <p id="tcm-recommendation-reason" role="status" aria-live="polite"></p>
+        <p id="tcm-recommendation-error" role="alert" hidden></p>
+        <div class="activity-controls">
+          <button type="button" class="primary" id="order-tcm-drink">Yes, order this drink</button>
+          <button type="button" id="decline-tcm-drink">No, thanks</button>
+          <button type="button" id="retry-tcm-recommendation" hidden>Try again</button>
+        </div>
+      </div>
+    </section>
+  </div>
 
 <script src="/static/js/api.js"></script>
 <script src="/static/js/passenger.js"></script>

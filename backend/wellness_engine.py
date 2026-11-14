@@ -21,23 +21,23 @@ RESTORE_MENU = [
     {
         "id": "F1",
         "name": "Hong Kong-style king prawn and silken egg ribbons on jasmine rice",
-        "description": "prawns, eggs, jasmine rice, choy sum, ginger broth",
-        "tag": "For a restful evening, help your body wind down",
+        "description": "Prawns, eggs, jasmine rice, choy sum, ginger broth",
+        "tag": "Restful Evening, Body Wind Down",
     },
     {
         "id": "F2",
         "name": "Maple-glazed roasted turkey tenderloin",
-        "description": "sweet potato, green beans, walnuts, cranberry, sage jus",
-        "tag": "To extend sleep",
+        "description": "Sweet potato, green beans, walnuts, cranberry, sage jus",
+        "tag": "Improve Sleep Quality"
     },
     {
         "id": "F3",
         "name": "Claypot brown rice with pumpkin, shiitake and lotus seed (vegetarian)",
         "description": (
-            "brown rice, sweet pumpkin, shiitake mushrooms, lotus seeds, "
+            "Brown rice, sweet pumpkin, shiitake mushrooms, lotus seeds, "
             "silken tofu, pumpkin seeds, ginger"
         ),
-        "tag": "For a restful evening, help you wind down",
+        "tag": "Restful Evening, Body Wind Down",
     },
 ]
 
@@ -45,22 +45,22 @@ GENTLE_MENU = [
     {
         "id": "N1",
         "name": "Cantonese steamed wild cod",
-        "description": "ginger, spring onion, soy broth, jasmine rice, choy sum",
-        "tag": "For a calm stomach before sleep",
+        "description": "Ginger, spring onion, soy broth, jasmine rice, choy sum",
+        "tag": "Soothe Stomach before Sleep",
     },
     {
         "id": "N2",
         "name": "Poached Hokkaido scallops",
         "description": (
-            "scallops, sweet corn, potato purée, asparagus, lemon-thyme broth"
+            "Scallops, sweet corn, potato purée, asparagus, lemon-thyme broth"
         ),
-        "tag": "settled stomach",
+        "tag": "Soothe Stomach before Sleep",
     },
     {
         "id": "N3",
         "name": "Pan-roasted tofu and shiitake mushrooms (vegetarian)",
         "description": "Brown rice, spinach, sesame, pumpkin seeds",
-        "tag": "gentle wind-down, support relaxation",
+        "tag": "Gentle Wind-Down, Support Relaxation",
     },
 ]
 
@@ -70,6 +70,12 @@ MENU_BY_SYMPTOM = {
 }
 
 FLIGHT_PHASES = ("boarding", "climb", "cruise", "descent")
+
+MEAL_HOURS_BEFORE_SLEEP = 1
+CAFFEINE_CUTOFF_HOURS_BEFORE_SLEEP = 6
+COFFEE_REQUEST_WINDOW_HOURS = 0.25
+SLEEP_RECOMMENDATION_HOURS_BEFORE_SLEEP = 2.5
+TCM_DRINK_HOURS_BEFORE_SLEEP = 1
 
 PHASE_ACTIONS = {
     "boarding": {
@@ -89,6 +95,84 @@ PHASE_ACTIONS = {
         "crew": "Prioritise landing preparation and defer non-essential service.",
     },
 }
+
+
+def build_schedule(sleep_plan):
+    """Build schedule events relative to CX844 departure."""
+
+    if sleep_plan is None:
+        return []
+
+    sleep_start = sleep_plan["sleep_start_hours_after_departure"]
+    sleep_duration = sleep_plan["sleep_duration_hours"]
+    if (
+        isinstance(sleep_start, bool)
+        or not isinstance(sleep_start, (int, float))
+        or sleep_start < 0
+    ):
+        raise ValueError("sleep start must be a non-negative number of flight hours")
+    if (
+        isinstance(sleep_duration, bool)
+        or not isinstance(sleep_duration, (int, float))
+        or sleep_duration <= 0
+    ):
+        raise ValueError("sleep duration must be a positive number of hours")
+
+    dinner_hour = sleep_plan.get(
+        "dinner_hours_after_departure",
+        sleep_start - MEAL_HOURS_BEFORE_SLEEP,
+    )
+    events = [
+        {
+            "type": "dinner",
+            "label": "Dinner",
+            "hour": dinner_hour,
+        },
+        {
+            "type": "caffeine_cutoff",
+            "label": "Caffeine cutoff (6 hours before sleep)",
+            "hour": sleep_start - CAFFEINE_CUTOFF_HOURS_BEFORE_SLEEP,
+            "window_hours": COFFEE_REQUEST_WINDOW_HOURS,
+        },
+        {
+            "type": "sleep_recommendation",
+            "label": "Sleep wind-down recommendation",
+            "hour": sleep_start - SLEEP_RECOMMENDATION_HOURS_BEFORE_SLEEP,
+        },
+        {
+            "type": "tcm_drink",
+            "label": "TCM drink recommendation",
+            "hour": sleep_start - TCM_DRINK_HOURS_BEFORE_SLEEP,
+        },
+        {
+            "type": "sleep_start",
+            "label": "Sleep begins",
+            "hour": sleep_start,
+        },
+        {
+            "type": "wake_up",
+            "label": "Wake-up",
+            "hour": sleep_start + sleep_duration,
+        },
+    ]
+
+    reminder_minutes = sleep_plan.get(
+        "biomarker_reminder_minutes_before_sleep"
+    )
+    if reminder_minutes is not None:
+        if (
+            isinstance(reminder_minutes, bool)
+            or not isinstance(reminder_minutes, (int, float))
+            or reminder_minutes < 0
+        ):
+            raise ValueError("biomarker reminder offset must be non-negative")
+        events.append({
+            "type": "biomarker_reminder",
+            "label": "Biomarker check-in reminder",
+            "hour": sleep_start - reminder_minutes / 60,
+        })
+
+    return sorted(events, key=lambda event: event["hour"])
 
 
 def analyse_passenger(passenger, context=None):
@@ -249,6 +333,7 @@ def analyse_passenger(passenger, context=None):
     return {
         "seat": passenger["seat"],
         "flight_phase": flight_phase,
+        "schedule": build_schedule(passenger.get("sleep_plan")),
         "priority": priority,
         "status": status,
         "flags": flags,
