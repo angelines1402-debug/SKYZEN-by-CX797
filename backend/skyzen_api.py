@@ -4,11 +4,25 @@ from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+
+if __package__:
+    from .wellness_engine import (
+        DEMO_THRESHOLDS,
+        analyse_passenger,
+        generate_wellness_plans,
+    )
+else:
+    from wellness_engine import (
+        DEMO_THRESHOLDS,
+        analyse_passenger,
+        generate_wellness_plans,
+    )
 
 
 # =====================================================
@@ -25,11 +39,18 @@ HISTORY_LIMIT = 60
 # These are NOT clinically validated medical criteria.
 
 THRESHOLDS = {
-    "hrv": {"min": 40, "max": 100},
-    "spo2": {"min": 94, "max": 100},
+    "hrv": {
+        "min": DEMO_THRESHOLDS["hrv_low"],
+        "max": DEMO_THRESHOLDS["hrv_high"],
+    },
+    "spo2": {
+        "min": DEMO_THRESHOLDS["spo2_low"],
+        "max": DEMO_THRESHOLDS["spo2_high"],
+    },
 }
 
 LIVE_SEATS = ["2A", "2K"]
+PATRICIA_NAUSEA_START_TICK = 8
 
 
 # =====================================================
@@ -42,12 +63,14 @@ initial_passengers = {
         "name": "Patricia",
         "hrv": 55,
         "spo2": 98,
+        "reported_symptom": None,
     },
     "2K": {
         "passenger_id": "P002",
         "name": "Mr. Tanaka",
-        "hrv": 52,
+        "hrv": 36,
         "spo2": 97,
+        "reported_symptom": "fatigue",
     },
     "3D": {
         "passenger_id": "P003",
@@ -147,50 +170,25 @@ def clamp(value, minimum, maximum):
     return max(minimum, min(maximum, value))
 
 
-def generate_patricia_reading(passenger):
-    """Patricia: stable readings with small fluctuations."""
+def generate_patricia_reading(passenger, tick):
+    """Patricia starts well and reports nausea after eight simulation ticks."""
 
     passenger["hrv"] += random.randint(-1, 1)
     passenger["spo2"] += random.choice([-1, 0, 0, 0, 1])
 
     passenger["hrv"] = clamp(passenger["hrv"], 48, 62)
     passenger["spo2"] = clamp(passenger["spo2"], 96, 100)
+    passenger["reported_symptom"] = (
+        "nausea" if tick >= PATRICIA_NAUSEA_START_TICK else None
+    )
 
 
-def generate_tanaka_reading(passenger, tick):
-    """
-    Mr. Tanaka: controlled demonstration scenario.
+def generate_tanaka_reading(passenger):
+    """Mr. Tanaka reports fatigue from the start; readings stay in the demo range."""
 
-    Ticks 0-7: Stable
-    Ticks 8-19: Simulated wellness alert
-    Ticks 20-29: Recovery
-    Ticks 30-39: Stable
-
-    One tick = 2 seconds.
-    The 40-tick scenario then repeats.
-    """
-
-    phase = tick % 40
-
-    if phase < 8:
-        # Stable
-        passenger["hrv"] = 52 + random.randint(-2, 2)
-        passenger["spo2"] = 97 + random.randint(-1, 1)
-
-    elif phase < 20:
-        # Simulated wellness alert
-        passenger["hrv"] = 35 + random.randint(-2, 2)
-        passenger["spo2"] = 91 + random.randint(-1, 1)
-
-    elif phase < 30:
-        # Recovery
-        passenger["hrv"] = 48 + random.randint(-2, 2)
-        passenger["spo2"] = 96 + random.randint(-1, 1)
-
-    else:
-        # Stable again
-        passenger["hrv"] = 54 + random.randint(-2, 2)
-        passenger["spo2"] = 98 + random.randint(-1, 1)
+    passenger["hrv"] = 36 + random.randint(-2, 2)
+    passenger["spo2"] = 97 + random.randint(-1, 1)
+    passenger["reported_symptom"] = "fatigue"
 
 
 def update_live_passengers():
@@ -200,11 +198,8 @@ def update_live_passengers():
 
     simulation_tick += 1
 
-    generate_patricia_reading(live_data["2A"])
-    generate_tanaka_reading(
-        live_data["2K"],
-        simulation_tick
-    )
+    generate_patricia_reading(live_data["2A"], simulation_tick)
+    generate_tanaka_reading(live_data["2K"])
 
 
 # =====================================================
@@ -261,6 +256,7 @@ def process_passenger(seat, passenger, timestamp):
         "priority": priority,
         "hrv": readings["hrv"],
         "spo2": readings["spo2"],
+        "reported_symptom": passenger.get("reported_symptom"),
         "flags": flags,
         "data_source": data_source,
     }
@@ -415,19 +411,54 @@ def snapshot():
 
 
 @app.get("/wellness")
-def wellness_all():
-    raise HTTPException(
-        status_code=501,
-        detail="Wellness plans are not implemented yet.",
+def wellness_all(
+    flight_phase: Literal["boarding", "climb", "cruise", "descent"] | None = None,
+):
+    timestamp = datetime.now(timezone.utc).isoformat()
+    passengers = [
+        process_passenger(seat, passenger, timestamp)
+        for seat, passenger in live_data.items()
+    ]
+    contexts = (
+        {seat: {"flight_phase": flight_phase} for seat in live_data}
+        if flight_phase is not None
+        else None
     )
+
+    return {
+        "flight_id": FLIGHT_ID,
+        "timestamp": timestamp,
+        "passengers": generate_wellness_plans(passengers, contexts),
+    }
 
 
 @app.get("/wellness/{seat}")
-def wellness_detail(seat: str):
-    raise HTTPException(
-        status_code=501,
-        detail="Wellness plans are not implemented yet.",
+def wellness_detail(
+    seat: str,
+    symptom: Literal["fatigue", "nausea"] | None = None,
+    flight_phase: Literal["boarding", "climb", "cruise", "descent"] | None = None,
+):
+    seat = seat.upper()
+
+    if seat not in live_data:
+        raise HTTPException(
+            status_code=404,
+            detail="Passenger seat not found",
+        )
+
+    passenger = process_passenger(
+        seat,
+        live_data[seat],
+        datetime.now(timezone.utc).isoformat(),
     )
+    context = {}
+    selected_symptom = symptom or live_data[seat].get("reported_symptom")
+    if selected_symptom is not None:
+        context["symptom"] = selected_symptom
+    if flight_phase is not None:
+        context["flight_phase"] = flight_phase
+
+    return analyse_passenger(passenger, context or None)
 
 
 @app.get("/passengers/{seat}")
