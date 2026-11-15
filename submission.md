@@ -1,6 +1,6 @@
 # SkyZen
 
-An in-flight passenger wellness and cabin crew coordination platform that generates customized wellness plans based on live bio-marker input. 
+An in-flight passenger wellness and cabin crew coordination platform that generates customized wellness plans based on live bio-marker input and flight timeline.
 
 ## Prototype
 Passenger Dashboard (Catherine): [Open dashboard](http://localhost:8000/passenger?seat=2A)
